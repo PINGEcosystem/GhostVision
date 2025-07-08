@@ -8,6 +8,7 @@ import os
 from pingmapper.funcs_common import *
 from pingmapper.class_rectObj import rectObj
 from inference_folder import do_inference
+from inference_tracker import do_tracker_inference
 import cv2
 
 
@@ -29,7 +30,17 @@ class crabObj(rectObj):
         return
     
     #=======================================================================
-    def _detectCrabPots(self, export_image=True, export_vid=False, confidence=0.5, iou_threshold=0.5):
+    def _detectCrabPots(self, in_dir: str, export_image: bool=True, export_vid: bool=False, confidence: float=0.5, iou_threshold: float=0.5):
+        '''
+        '''
+
+        # Do inference
+        do_inference(in_dir=in_dir, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+
+        return
+    
+    #=======================================================================
+    def _detectTrackCrabPots(self, in_vid: str, confidence: float=0.5, iou_threshold: float=0.5, stride: float=0.2, nchunk: int=500):
         '''
         '''
 
@@ -39,6 +50,8 @@ class crabObj(rectObj):
         wcp_dir = os.path.join(self.outDir, wcp_dir_name)
 
         # Do inference
-        do_inference(in_dir=wcp_dir, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+        do_tracker_inference(in_vid=in_vid, confidence=confidence, iou_threshold=iou_threshold, stride=stride, nchunk=nchunk)
+
+        return
 
         

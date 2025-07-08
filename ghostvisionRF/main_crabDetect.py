@@ -78,7 +78,8 @@ def crabpots_master_func(logfilename = '',
                         stride = 0,
                         export_image = False,
                         delete_image = False,
-                        export_vid = False):
+                        export_vid = False,
+                        inference_track=True):
     
 
     ###############################################
@@ -122,36 +123,103 @@ def crabpots_master_func(logfilename = '',
 
     ##############
     # Do inference
-    for son in crabObjs:
-        son._detectCrabPots(export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+    if not inference_track:
+        for son in crabObjs:
+            # Get wcp folder
+            wcp_dir_name = 'wcp_mw'
+            wcp_dir = os.path.join(son.outDir, wcp_dir_name)
 
-        # Get wcp folder
-        wcp_dir_name = 'wcp_mw'
-        wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+            out_dir_name = os.path.basename(wcp_dir)+'_results'
+            outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
 
-        out_dir_name = os.path.basename(wcp_dir)+'_results'
-        outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
-        if export_image and export_vid:
+            # Inference
+            son._detectCrabPots(in_dir=wcp_dir, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+
+            # Video
+            if export_image and export_vid:
+                channel = (son.beamName) #ss_port, ss_star, etc.
+                projName = os.path.split(son.projDir)[-1]
+
+                # images = [img for img in os.listdir(image_folder) if img.endswith((".png", ".jpg", ".jpeg"))]
+                images = [img for img in os.listdir(outDir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
+                images.sort()
+
+                vid_path = os.path.join(outDir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
+
+                frame = cv2.imread(os.path.join(outDir, images[0]))
+                height, width, layers = frame.shape
+
+                video = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), 8, (width, height), )
+                for image in images:
+                    frame = cv2.imread(os.path.join(outDir, image))
+                    video.write(frame)
+
+                video.release()
+
+                if delete_image:
+                    for image in images:
+                        # delet
+                        os.remove(os.path.join(outDir, image))
+
+    # if inference_track:
+    #     for son in crabObjs:
+    #         # Get wcp folder
+    #         wcp_dir_name = 'wcp_mw'
+    #         wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+
+    #         out_dir_name = os.path.basename(wcp_dir)+'_results'
+    #         outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
+
+    #         son._detectTrackCrabPots(in_dir=wcp_dir, confidence=confidence, iou_threshold=iou_threshold)
+
+
+
+    if inference_track:
+        for son in crabObjs:
+
+            # Get wcp folder
+            wcp_dir_name = 'wcp_mw'
+            wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+
+            print(wcp_dir)
+            print(os.path.exists(wcp_dir))
+            print('confidence: {}\tiou: {}'.format(confidence, iou_threshold))
+
+            out_dir_name = os.path.basename(wcp_dir)+'_results'
+            out_dir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
+
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
+            # else:
+            #     shutil.rmtree(out_dir)
+            #     os.makedirs(out_dir)
+
+            ##################
+            # Create the video
             channel = (son.beamName) #ss_port, ss_star, etc.
             projName = os.path.split(son.projDir)[-1]
 
             # images = [img for img in os.listdir(image_folder) if img.endswith((".png", ".jpg", ".jpeg"))]
-            images = [img for img in os.listdir(outDir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
+            images = [img for img in os.listdir(wcp_dir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
             images.sort()
 
-            vid_path = os.path.join(outDir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
+            vid_path = os.path.join(out_dir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
 
-            frame = cv2.imread(os.path.join(outDir, images[0]))
+            frame = cv2.imread(os.path.join(wcp_dir, images[0]))
             height, width, layers = frame.shape
 
-            video = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), 8, (width, height), )
+            video = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (width, height), )
             for image in images:
-                frame = cv2.imread(os.path.join(outDir, image))
+                frame = cv2.imread(os.path.join(wcp_dir, image))
                 video.write(frame)
 
             video.release()
 
-            if delete_image:
-                for image in images:
-                    # delet
-                    os.remove(os.path.join(outDir, image))
+            #######################
+            # Do inference tracking
+
+            # for son in crabObjs:
+            to_stride = int(round(nchunk * window_stride, 0))
+            son._detectTrackCrabPots(in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
+
+            # sys.exit()

@@ -18,8 +18,8 @@ project_mode = 1
 prefix = 'BEP2024_'
 suffix = ''
 gpxToHum = True
-confidence = 0.3
-iou_threshold = 0.2
+confidence = 0.2
+iou_threshold = 0.1
 egn = False
 egn_stretch = 1
 
@@ -39,16 +39,16 @@ export_vid = False
 
 # Imports
 import sys, os
-pingPath = os.path.normpath('../PINGMapper/pingmapper')
-sys.path.insert(0, pingPath)
-sys.path.insert(0, 'src')
-from funcs_common import *
-from main_readFiles import read_master_func
-from main_rectify import rectify_master_func
+# pingPath = os.path.normpath('../PINGMapper/pingmapper')
+# sys.path.insert(0, pingPath)
+# sys.path.insert(0, 'src')
+# from funcs_common import *
+# from main_readFiles import read_master_func
+# from main_rectify import rectify_master_func
 
-# from pingmapper.funcs_common import *
-# from pingmapper.main_readFiles import read_master_func
-# from pingmapper.main_rectify import rectify_master_func
+from pingmapper.funcs_common import *
+from pingmapper.main_readFiles import read_master_func
+from pingmapper.main_rectify import rectify_master_func
 from main_crabDetect import crabpots_master_func
 
 from glob import glob
@@ -165,30 +165,30 @@ for datFile in inFiles:
     recName = prefix + recName + suffix
     projDir = os.path.join(outDir, recName)
 
-    # # =========================================================
-    # # Determine project_mode
-    # print(project_mode)
-    # if project_mode == 0:
-    #     # Create new project
-    #     if not os.path.exists(projDir):
-    #         os.mkdir(projDir)
-    #     else:
-    #         projectMode_1_inval()
+    # =========================================================
+    # Determine project_mode
+    print(project_mode)
+    if project_mode == 0:
+        # Create new project
+        if not os.path.exists(projDir):
+            os.mkdir(projDir)
+        else:
+            projectMode_1_inval()
 
-    # elif project_mode == 1:
-    #     # Overwrite existing project
-    #     if os.path.exists(projDir):
-    #         shutil.rmtree(projDir)
+    elif project_mode == 1:
+        # Overwrite existing project
+        if os.path.exists(projDir):
+            shutil.rmtree(projDir)
 
-    #     print(projDir)
-    #     os.mkdir(projDir)        
+        print(projDir)
+        os.mkdir(projDir)        
 
-    # elif project_mode == 2:
-    #     # Update project
-    #     # Make sure project exists, exit if not.
+    elif project_mode == 2:
+        # Update project
+        # Make sure project exists, exit if not.
         
-    #     if not os.path.exists(projDir):
-    #         projectMode_2_inval()
+        if not os.path.exists(projDir):
+            projectMode_2_inval()
 
     
     #============================================
@@ -272,22 +272,22 @@ for datFile in inFiles:
 
     # try:
 
-    # print('sonPath',sonPath)
-    # print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
-    # print('+++++++++++++++++++++++++++++++++++++++++++')
-    # print('***** Working On *****')
-    # print(humFile)
-    # print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+    print('sonPath',sonPath)
+    print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
+    print('+++++++++++++++++++++++++++++++++++++++++++')
+    print('***** Working On *****')
+    print(humFile)
+    print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-    # print('\n===========================================')
-    # print('===========================================')
-    # print('***** READING *****')
-    # read_master_func(**params)
+    print('\n===========================================')
+    print('===========================================')
+    print('***** READING *****')
+    read_master_func(**params)
 
-    # print('\n===========================================')
-    # print('===========================================')
-    # print('***** RECTIFYING *****')
-    # rectify_master_func(**params)
+    print('\n===========================================')
+    print('===========================================')
+    print('***** RECTIFYING *****')
+    rectify_master_func(**params)
 
     params['gpxToHum'] = gpxToHum
     params['sdDir'] = inDir
@@ -328,4 +328,4 @@ for datFile in inFiles:
 
     sys.stdout = oldOutput
 
-    sys.exit()
+    # sys.exit()
