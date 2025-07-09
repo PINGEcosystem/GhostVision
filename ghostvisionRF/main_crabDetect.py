@@ -6,7 +6,8 @@
 import os
 import cv2
 from pingmapper.funcs_common import *
-from class_crabObj import crabObj
+# from class_crabObj import crabObj
+from ghostvisionRF.class_crabObj import crabObj
 
 
 #===========================================

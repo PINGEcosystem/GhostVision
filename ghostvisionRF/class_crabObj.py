@@ -7,8 +7,10 @@ import os
 
 from pingmapper.funcs_common import *
 from pingmapper.class_rectObj import rectObj
-from inference_folder import do_inference
-from inference_tracker import do_tracker_inference
+# from inference_folder import do_inference
+# from inference_tracker import do_tracker_inference
+from ghostvisionRF.inference_folder import do_inference
+from ghostvisionRF.inference_tracker import do_tracker_inference
 import cv2
 
 

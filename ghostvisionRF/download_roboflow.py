@@ -6,9 +6,9 @@ Copyright (c) 2025 Cameron S. Bodine
 import os, sys
 from inference.models.utils import get_roboflow_model
 from distutils.dir_util import copy_tree
-from ultralytics import YOLO
-import json
-import roboflow
+# from ultralytics import YOLO
+# import json
+# import roboflow
 
 # from inference.models.yolov10 import YOLOv10ObjectDetection
 

@@ -12,7 +12,8 @@ sys.path.append(PACKAGE_DIR)
 
 def main(process):
 
-    print(process)
+    from ghostvisionRF.detect import detect_main
+    detect_main()
 
 
 

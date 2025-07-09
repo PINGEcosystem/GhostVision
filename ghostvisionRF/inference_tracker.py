@@ -70,7 +70,7 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
     #     return annotator.annotate(frame, detections, labels=detections.tracker_id)
 
     # Get the model, tracker, and annotator
-    model = get_model('allcrabpotsources/10')
+    model = get_model('allcrabpotsources/11')
     # byte_tracker = sv.ByteTrack(track_activation_threshold=0.01, 
     #                             lost_track_buffer=100,
     #                             minimum_matching_threshold=0.01,
