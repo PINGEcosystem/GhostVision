@@ -9,6 +9,7 @@ from trackers import SORTTracker
 from trackers import DeepSORTFeatureExtractor, DeepSORTTracker
 import numpy as np
 import time
+import pandas as pd
 
 # Add at the top of your file
 last_boxes = None
@@ -19,19 +20,11 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
 
     '''
     '''
-    # def callback(frame: np.ndarray, index: int) -> np.ndarray:
-    #     # results = model(frame)[0]
-    #     results = model.infer(frame, confidence=confidence, iou_threshold=iou_threshold)[0]
-    #     # detections = sv.Detections.from_ultralytics(results)
-    #     detections = sv.Detections.from_inference(results)
-    #     detections = byte_tracker.update_with_detections(detections)
-    #     labels = [f"#{tracker_id} {model.model.names[class_id]} {confidence:0.2f}"
-    #               for _, _, confidence, class_id, tracker_id
-    #               in detections
-    #               ]
-        
-    #     return annotator.annotate(scene=frame.copy(), detections=detections, labels=labels)
 
+    # Store all annotations
+    allCrabPreds = []
+
+    # Callback: process each video frame, do inference, get metadata, return annotated frame
     def callback(frame: np.ndarray, index: int) -> np.ndarray:
         global last_boxes, last_ids
         result = model.infer(frame, confidence=confidence, iou_threshold=iou_threshold)[0]
@@ -43,6 +36,8 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
         # load the results into the supervision Detections api
         detections = sv.Detections.from_inference(result).with_nms(threshold=iou_threshold, class_agnostic=True)
         detections = tracker.update(detections, frame=frame)
+
+        # print('\n\n', detections)
         
         # Prepare label for annotations
         labels = [f"{tracker_id} {confidence:0.2f}" for tracker_id, confidence in zip(detections.tracker_id, detections.confidence)]    
@@ -61,25 +56,31 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
 
         # print(index, detections.tracker_id)
 
-        return annotated_image
+        if detections.tracker_id.size>0:
+            # allCrabPreds.append(detections)
 
-    # def callback(frame, _):
-    #     result = model.infer(frame)[0]
-    #     detections = sv.Detections.from_inference(result)
-    #     detections = tracker.update(detections)
-    #     return annotator.annotate(frame, detections, labels=detections.tracker_id)
+            # Build DataFrame from Detections attributes
+            df = pd.DataFrame({
+                'vid_frame_id':index,
+                'tracker_id': detections.tracker_id.tolist(),
+                'class_id': detections.class_id.tolist(),
+                'data': detections.data['class_name'],
+                'xyxy': detections.xyxy.tolist(),
+                'confidence': detections.confidence.tolist(),
+            })
+
+            df['vid_frame_id'] = index
+            df['frame_width'] = frame.shape[1]
+            df['frame_height'] = frame.shape[0]
+
+            allCrabPreds.append(df)            
+
+        return annotated_image
 
     # Get the model, tracker, and annotator
     model = get_model('allcrabpotsources/11')
-    # byte_tracker = sv.ByteTrack(track_activation_threshold=0.01, 
-    #                             lost_track_buffer=100,
-    #                             minimum_matching_threshold=0.01,
-    #                             frame_rate=8,
-    #                             minimum_consecutive_frames=1
-    #                             )
-    # annotator = sv.BoxAnnotator()
 
-    minimum_consecutive_frames = int((nchunk / (nchunk*stride)) * track_prop)
+    # minimum_consecutive_frames = int((nchunk / (nchunk*stride)) * track_prop)
     # print("Minimum Consecutive Frames: {}".format(minimum_consecutive_frames))
 
     feature_extractor = DeepSORTFeatureExtractor.from_timm(model_name="mobilenetv4_conv_small.e1200_r224_in1k")
@@ -88,19 +89,12 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
                               frame_rate=10,
                               track_activation_threshold=0.1,                              
                               minimum_consecutive_frames=1,
-                            #   minimum_consecutive_frames=minimum_consecutive_frames,
                               minimum_iou_threshold=iou_threshold,
                               appearance_threshold=0.8,
                               appearance_weight=0.5,
                               distance_metric='cos',
                               )
 
-    # tracker = SORTTracker(track_activation_threshold=0.05, 
-    #                     lost_track_buffer=30,
-    #                     frame_rate=15,
-    #                     minimum_consecutive_frames=1,
-    #                     # minimum_iou_threshold=0.2
-    #                     )
     tracker.reset()
     annotator = sv.LabelAnnotator(text_position=sv.Position.TOP_CENTER)
 
@@ -114,11 +108,11 @@ def do_tracker_inference(in_vid: str, export_vid: bool=True, confidence: float=0
     start_time = time.time()
     sv.process_video(source_path=in_vid, target_path=out_vid, callback=callback, show_progress=True)
     print("\n\nInference Time (s):", round(time.time() - start_time, ndigits=1))
-
-
-
-
     
+    # Extract detections
+    crabDetections = pd.concat(allCrabPreds)
 
+    out_file = out_vid.replace('.mp4', '_ALL.csv')
+    crabDetections.to_csv(out_file, index=False)
 
     return

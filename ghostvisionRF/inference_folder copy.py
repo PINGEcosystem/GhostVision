@@ -59,7 +59,7 @@ def do_inference(dir: str):
     print(os.path.exists(dir))
 
     # Load the model
-    model_path = r'Z:\UDEL\PythonRepos\GhostVision\ghostvision\allcrabpotsources\10\weights.onnx'
+    model_path = r'Z:\UDEL\PythonRepos\GhostVision\ghostvision\allcrabpotsources\11\weights.onnx'
 
     ort_sess = ort.InferenceSession(model_path)
 

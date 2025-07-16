@@ -3,7 +3,13 @@
 Copyright (c) 2025 Cameron S. Bodine
 '''
 
-import sys, os
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow INFO and WARNING messages
+
+import warnings
+warnings.filterwarnings("ignore")
+
+import sys
 from inference import get_model
 import supervision as sv
 import json
@@ -11,6 +17,8 @@ import cv2
 import pandas as pd
 import shutil
 import time
+from tqdm import tqdm
+from joblib import Parallel, delayed, cpu_count
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -49,7 +57,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 #     return img_np
 
 
-def do_inference(in_dir: str, export_image: bool=True, export_vid: bool=False, confidence: float=0.2, iou_threshold: float=0.2):
+def do_inference(in_dir: str, out_dir: str, detect_csv: str, export_image: bool=True, export_vid: bool=False, confidence: float=0.2, iou_threshold: float=0.2):
     '''
     Run inference on input folder
     '''
@@ -58,20 +66,14 @@ def do_inference(in_dir: str, export_image: bool=True, export_vid: bool=False, c
     print(os.path.exists(in_dir))
     print('confidence: {}\tiou: {}'.format(confidence, iou_threshold))
 
-    out_dir_name = os.path.basename(in_dir)+'_results'
-    out_dir = os.path.join(os.path.dirname(in_dir), out_dir_name)
-
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     else:
         shutil.rmtree(out_dir)
         os.makedirs(out_dir)
 
-    # Load the model
-    model_path = r'Z:\UDEL\PythonRepos\GhostVision\ghostvision\allcrabpotsources\10\weights.onnx'
-
     # ort_sess = ort.InferenceSession(model_path)
-    model = get_model('allcrabpotsources/10')
+    model = get_model('allcrabpotsources/11')
 
     # Get images in directory
     images = os.listdir(in_dir)
@@ -79,87 +81,78 @@ def do_inference(in_dir: str, export_image: bool=True, export_vid: bool=False, c
 
     # Batch inference
     start_time = time.time()
-    results = model.infer(images, confidence=confidence, iou_threshold=iou_threshold)
+    results = model.infer(images, confidence=confidence, iou_threshold=iou_threshold, show_progress=True)
     print("\n\nInference Time (s):", round(time.time() - start_time, ndigits=1))
 
     # Save results and export images
     start_time = time.time()
-    save_results_image(out_dir=out_dir, results=results, images=images, export_image=export_image)
+    # save_results_image(out_dir=out_dir, detect_csv=detect_csv, results=results, images=images, export_image=export_image)
+    r = Parallel(n_jobs=cpu_count())(delayed(save_results_image)(out_dir=out_dir, result=res, image=img, export_image=export_image) for res, img in tqdm(zip(results, images), total=len(results)))
+
+    dfAll = pd.concat(r, axis=0)
+
+    # Drop nan items
+    dfAll = dfAll.dropna(subset=['class_name'])
+
+    dfAll.to_csv(detect_csv, index=False)
+
     print("\n\nSave Results Time (s):", round(time.time() - start_time, ndigits=1))
 
 
 
-def save_results_image(out_dir: str, results: list, images: list, export_image: bool=True):
+def save_results_image(out_dir: str, result: list, image: str, export_image: bool=True):
     '''
     
     '''
-
-    dfAll = []
-
-    for result, img in zip(results, images):
         
-        # load the results into the supervision Detections api
-        detections = sv.Detections.from_inference(result)
-        
-        # Prepare label for annotations
-        labels = [f"{class_id['class_name']} {confidence:0.2f}" for _, _, confidence, _, _, class_id in detections]
-
-        # create supervision annotators
-        bounding_box_annotator = sv.BoxAnnotator()
-        label_annotator = sv.LabelAnnotator()
-
-        # Open the image
-        img_nd = cv2.imread(img)
-
-        # annotate the image with our inference results
-        annotated_image = bounding_box_annotator.annotate(
-                        scene=img_nd, detections=detections)
-        annotated_image = label_annotator.annotate(
-            scene=annotated_image, detections=detections, labels=labels)
-        
-        # channel = os.path.split(self.beamName)[-1] #ss_port, ss_star, etc.
-        # projName = os.path.split(self.projDir)[-1]
-        # # file_name = projName + '_' + channel + '_detect_results_' + self._addZero(i) + str(i) + '.png'
-        # file_name = projName + '_' + channel + '_detect_results_' + self._addZero(start_idx) + str(start_idx) + '_' + self._addZero(end_idx) + str(end_idx) + '.png'
-
-        in_file = os.path.basename(img)
-        file_name = in_file.replace('.png', '_detect.png')
-        file_name = os.path.join(out_dir, file_name)
-        
-        if export_image:
-            cv2.imwrite(file_name, annotated_image)
-
-        result = result.json()
-        result = json.loads(result)
-
-        # Prepare dataframe
-        # df = pd.DataFrame.from_dict({'chunk':[i], 'beam':[self.beamName], 'name':[os.path.basename(file_name)]})
-        df = pd.DataFrame.from_dict({'name':[os.path.basename(file_name)]})
-        df1 = pd.json_normalize(result['image'])
-        df1 = df1.rename(columns={'width': 'img_width', 'height': 'img_height'})
-        df2 = pd.json_normalize(result['predictions'])
-
-        df = pd.concat([df, df1, df2], axis=1)
-
-        # If multiple predictions in an image
-        if len(df) > 1:
-            # df['chunk'] = i
-            df['name'] = os.path.basename(file_name)
-            df['img_width'] = df.loc[0, 'img_width']
-            df['img_height'] = df.loc[0, 'img_height']
-
-        df = df.rename(columns={'name': 'name_long'})
-
-        dfAll.append(df)
-
-    dfAll = pd.concat(dfAll, axis=0)
-
-    # Drop nan items
-    dfAll = dfAll.dropna(subset=['class_name'])    
+    # load the results into the supervision Detections api
+    detections = sv.Detections.from_inference(result)
     
-    file_name = 'detect_results.csv'
+    # Prepare label for annotations
+    labels = [f"{class_id['class_name']} {confidence:0.2f}" for _, _, confidence, _, _, class_id in detections]
+
+    # create supervision annotators
+    bounding_box_annotator = sv.BoxAnnotator()
+    label_annotator = sv.LabelAnnotator()
+
+    # Open the image
+    img_nd = cv2.imread(image)
+
+    # annotate the image with our inference results
+    annotated_image = bounding_box_annotator.annotate(
+                    scene=img_nd, detections=detections)
+    annotated_image = label_annotator.annotate(
+        scene=annotated_image, detections=detections, labels=labels)
+
+    in_file = os.path.basename(image)
+    file_name = in_file.replace('.png', '_detect.png')
     file_name = os.path.join(out_dir, file_name)
+    
+    if export_image:
+        cv2.imwrite(file_name, annotated_image)
 
-    dfAll.to_csv(file_name, index=False)
+    result = result.json()
+    result = json.loads(result)
 
-    return
+    # Prepare dataframe
+    # df = pd.DataFrame.from_dict({'chunk':[i], 'beam':[self.beamName], 'name':[os.path.basename(file_name)]})
+    df = pd.DataFrame.from_dict({'name':[os.path.basename(file_name)]})
+    df1 = pd.json_normalize(result['image'])
+    df1 = df1.rename(columns={'width': 'img_width', 'height': 'img_height'})
+    df2 = pd.json_normalize(result['predictions'])
+
+    df = pd.concat([df, df1, df2], axis=1)
+
+    # If multiple predictions in an image
+    if len(df) > 1:
+        # df['chunk'] = i
+        df['name'] = os.path.basename(file_name)
+        df['img_width'] = df.loc[0, 'img_width']
+        df['img_height'] = df.loc[0, 'img_height']
+
+    df['chunk_id'] = int(file_name.split('.jpg')[0].split('_')[-2])
+    df['chunk_offset'] = int(file_name.split('.jpg')[0].split('_')[-1])
+
+    df = df.rename(columns={'name': 'name_long'})
+
+    return df

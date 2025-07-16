@@ -5,9 +5,13 @@
 
 import os
 import cv2
-from pingmapper.funcs_common import *
+# from pingmapper.funcs_common import *
 # from class_crabObj import crabObj
 from ghostvisionRF.class_crabObj import crabObj
+
+from joblib import Parallel, delayed, cpu_count
+import pandas as pd
+from glob import glob
 
 
 #===========================================
@@ -80,7 +84,8 @@ def crabpots_master_func(logfilename = '',
                         export_image = False,
                         delete_image = False,
                         export_vid = False,
-                        inference_track=True):
+                        inference_track=False,
+                        tracker_cnt = 1):
     
 
     ###############################################
@@ -124,22 +129,29 @@ def crabpots_master_func(logfilename = '',
 
     ##############
     # Do inference
-    if not inference_track:
-        for son in crabObjs:
-            # Get wcp folder
-            wcp_dir_name = 'wcp_mw'
-            wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+    for son in crabObjs:
 
-            out_dir_name = os.path.basename(wcp_dir)+'_results'
-            outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
+        # Get wcp folder
+        wcp_dir_name = 'wcp_mw'
+        wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+
+        out_dir_name = os.path.basename(wcp_dir)+'_results'
+        outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
+
+        channel = (son.beamName) #ss_port, ss_star, etc.
+        projName = os.path.split(son.projDir)[-1]
+
+        # Without tracking
+        if not inference_track:
+            print('\n\nNot Tracking Objects...\n')
+
+            detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_ALL.csv'.format(projName, channel))
 
             # Inference
-            son._detectCrabPots(in_dir=wcp_dir, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+            son._detectCrabPots(in_dir=wcp_dir, out_dir=outDir, detect_csv=detect_csv, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
 
             # Video
             if export_image and export_vid:
-                channel = (son.beamName) #ss_port, ss_star, etc.
-                projName = os.path.split(son.projDir)[-1]
 
                 # images = [img for img in os.listdir(image_folder) if img.endswith((".png", ".jpg", ".jpeg"))]
                 images = [img for img in os.listdir(outDir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
@@ -162,49 +174,30 @@ def crabpots_master_func(logfilename = '',
                         # delet
                         os.remove(os.path.join(outDir, image))
 
-    # if inference_track:
-    #     for son in crabObjs:
-    #         # Get wcp folder
-    #         wcp_dir_name = 'wcp_mw'
-    #         wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+        # With tracking
+        if inference_track:
+            print('\n\nTracking Objects...\n')
 
-    #         out_dir_name = os.path.basename(wcp_dir)+'_results'
-    #         outDir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
-
-    #         son._detectTrackCrabPots(in_dir=wcp_dir, confidence=confidence, iou_threshold=iou_threshold)
-
-
-
-    if inference_track:
-        for son in crabObjs:
-
-            # Get wcp folder
-            wcp_dir_name = 'wcp_mw'
-            wcp_dir = os.path.join(son.outDir, wcp_dir_name)
+            detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
 
             print(wcp_dir)
             print(os.path.exists(wcp_dir))
             print('confidence: {}\tiou: {}'.format(confidence, iou_threshold))
 
-            out_dir_name = os.path.basename(wcp_dir)+'_results'
-            out_dir = os.path.join(os.path.dirname(wcp_dir), out_dir_name)
-
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
+            if not os.path.exists(outDir):
+                os.makedirs(outDir)
             # else:
-            #     shutil.rmtree(out_dir)
-            #     os.makedirs(out_dir)
+            #     shutil.rmtree(outDir)
+            #     os.makedirs(outDir)
 
             ##################
             # Create the video
-            channel = (son.beamName) #ss_port, ss_star, etc.
-            projName = os.path.split(son.projDir)[-1]
 
             # images = [img for img in os.listdir(image_folder) if img.endswith((".png", ".jpg", ".jpeg"))]
             images = [img for img in os.listdir(wcp_dir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
             images.sort()
 
-            vid_path = os.path.join(out_dir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
+            vid_path = os.path.join(outDir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
 
             frame = cv2.imread(os.path.join(wcp_dir, images[0]))
             height, width, layers = frame.shape
@@ -218,9 +211,41 @@ def crabpots_master_func(logfilename = '',
 
             #######################
             # Do inference tracking
-
-            # for son in crabObjs:
-            to_stride = int(round(nchunk * window_stride, 0))
             son._detectTrackCrabPots(in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
 
-            # sys.exit()
+
+            ###########################
+            # Calculate mapped location
+
+        # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
+        detectDF = pd.read_csv(detect_csv)
+
+        # Calculate ping index to get smoothed trackline data
+        detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
+
+        # Calculate target location
+        detectDF = son._calcDetectLoc(detectDF)
+
+        # Save all preds to csv
+        detectDF.to_csv(detect_csv, index=False)
+
+        if inference_track:
+            # Summarize by target_id
+            detectDF = son._summarizeDetect(detectDF)
+
+            detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
+
+        # Create wpt shapefile and GPX
+        if len(detectDF)>0:
+            son._calcWpt(detectDF, outDir)
+
+
+    ####################################
+    # Combine all Shp & GPX files into 1
+
+    # Find all the shapefiles
+
+    # shps = glob(os.path.join(outDir, '**', '.shp')) 
+                
+
+    return

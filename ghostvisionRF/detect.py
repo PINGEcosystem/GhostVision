@@ -61,8 +61,12 @@ def detect_main():
     moving_window = True
     window_stride = 0.05
 
-    export_image = False
-    export_vid = False
+    export_image = True
+    export_vid = True
+
+    inference_track = True
+    track_cnt_thresh = 0.25 # Percent of time the target is seen in window to keep
+    tracker_cnt = int((nchunk / (window_stride*nchunk)) * track_cnt_thresh)
 
     # For the logfile
     oldOutput = sys.stdout
@@ -127,7 +131,7 @@ def detect_main():
     # threshold = values['threshold']
     # cropRange = int(values['cropRange'])
 
-    project_mode=1
+    project_mode=2
 
     inDir = os.path.normpath(inDir)
     outDir = os.path.normpath(outDir)
@@ -296,22 +300,22 @@ def detect_main():
 
         # try:
 
-        print('sonPath',sonPath)
-        print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
-        print('+++++++++++++++++++++++++++++++++++++++++++')
-        print('***** Working On *****')
-        print(humFile)
-        print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+        # print('sonPath',sonPath)
+        # print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
+        # print('+++++++++++++++++++++++++++++++++++++++++++')
+        # print('***** Working On *****')
+        # print(humFile)
+        # print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-        print('\n===========================================')
-        print('===========================================')
-        print('***** READING *****')
-        read_master_func(**params)
+        # print('\n===========================================')
+        # print('===========================================')
+        # print('***** READING *****')
+        # read_master_func(**params)
 
-        print('\n===========================================')
-        print('===========================================')
-        print('***** RECTIFYING *****')
-        rectify_master_func(**params)
+        # print('\n===========================================')
+        # print('===========================================')
+        # print('***** RECTIFYING *****')
+        # rectify_master_func(**params)
 
         params['gpxToHum'] = gpxToHum
         params['sdDir'] = inDir
@@ -326,7 +330,7 @@ def detect_main():
         wptPrefix = 'wpt'
         wptPrefix = '{}_{}'.format(wptPrefix, recording)
         params['wptPrefix'] = wptPrefix
-        # params['stride'] = stride
+        params['stride'] = int(window_stride*nchunk)
 
         if export_vid and not export_image:
             export_image = True
@@ -335,6 +339,12 @@ def detect_main():
 
         params['export_vid'] = export_vid
         params['export_image'] = export_image
+        params['inference_track'] = inference_track
+        params['tracker_cnt'] = tracker_cnt
+
+        print('\n\n', '***User Detection Parameters***')
+        for k,v in params.items():
+            print("| {:<20s} : {:<10s} |".format(k, str(v)))
         
 
         print('\n===========================================')
