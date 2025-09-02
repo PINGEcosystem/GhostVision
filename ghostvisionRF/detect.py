@@ -18,18 +18,21 @@ pingPath = os.path.normpath('../PINGMapper/pingmapper')
 pingPath = os.path.abspath(pingPath)
 sys.path.insert(0, pingPath)
 sys.path.insert(0, 'src')
-from funcs_common import *
-from main_readFiles import read_master_func
-from main_rectify import rectify_master_func
+# from funcs_common import *
+# from main_readFiles import read_master_func
+# from main_rectify import rectify_master_func
 
-# from pingmapper.funcs_common import *
-# from pingmapper.main_readFiles import read_master_func
-# from pingmapper.main_rectify import rectify_master_func
+from pingmapper.funcs_common import *
+from pingmapper.main_readFiles import read_master_func
+from pingmapper.main_rectify import rectify_master_func
 
 # from main_crabDetect import crabpots_master_func
-from ghostvisionRF.main_crabDetect import crabpots_master_func
+from ghostvisionRF.main_crabDetect import crabpots_master_func, export_final_results
 
 from glob import glob
+
+filter_time_csv = os.path.join(pingPath, 'clip_table.csv')
+filter_time_csv = os.path.normpath(filter_time_csv)
 
 start_time = time.time()
 
@@ -41,14 +44,15 @@ def detect_main():
     # inDir = r'C:\Users\cbodine\Desktop\Crabpot_dev\recordings'
     # outDir = r'C:\Users\cbodine\Desktop\Crabpot_dev\202507_test'
 
-    inDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/recordings'
-    outDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/202507_test'
+    inDir = r'/mnt/c/Users/cbodine/Desktop/DesktopStuff/Crabpot_dev/recordings'
+    outDir = r'/mnt/z/UDEL/Meetings&Presentations/Conference/2025_AFS/GhostVision/data/ijust_vids'
+    projName = r'202507_test'
 
     project_mode = 1
     prefix = 'BEP2024_'
     suffix = ''
     gpxToHum = True
-    confidence = 0.2
+    confidence = 0.5
     iou_threshold = 0.1
     egn = False
     egn_stretch = 1
@@ -59,7 +63,7 @@ def detect_main():
     rect_wcp = False
 
     moving_window = True
-    window_stride = 0.05
+    window_stride = 0.05 #0.05
 
     export_image = True
     export_vid = True
@@ -67,6 +71,8 @@ def detect_main():
     inference_track = True
     track_cnt_thresh = 0.25 # Percent of time the target is seen in window to keep
     tracker_cnt = int((nchunk / (window_stride*nchunk)) * track_cnt_thresh)
+
+    time_table = False
 
     # For the logfile
     oldOutput = sys.stdout
@@ -131,10 +137,11 @@ def detect_main():
     # threshold = values['threshold']
     # cropRange = int(values['cropRange'])
 
-    project_mode=2
+    # project_mode=2
 
     inDir = os.path.normpath(inDir)
     outDir = os.path.normpath(outDir)
+    outDir = os.path.join(outDir, projName)
 
 
     #============================================
@@ -291,6 +298,13 @@ def detect_main():
         params['wcp'] = True
         params['rectMethod'] = rectMethod
 
+        if time_table:
+            time_table = filter_time_csv
+        else:
+            time_table = False
+
+        params['time_table'] = time_table
+
         #============================================
 
         print('\n\n', '***User Parameters***')
@@ -300,22 +314,22 @@ def detect_main():
 
         # try:
 
-        # print('sonPath',sonPath)
-        # print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
-        # print('+++++++++++++++++++++++++++++++++++++++++++')
-        # print('***** Working On *****')
-        # print(humFile)
-        # print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+        print('sonPath',sonPath)
+        print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
+        print('+++++++++++++++++++++++++++++++++++++++++++')
+        print('***** Working On *****')
+        print(humFile)
+        print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-        # print('\n===========================================')
-        # print('===========================================')
-        # print('***** READING *****')
-        # read_master_func(**params)
+        print('\n===========================================')
+        print('===========================================')
+        print('***** READING *****')
+        read_master_func(**params)
 
-        # print('\n===========================================')
-        # print('===========================================')
-        # print('***** RECTIFYING *****')
-        # rectify_master_func(**params)
+        print('\n===========================================')
+        print('===========================================')
+        print('***** RECTIFYING *****')
+        rectify_master_func(**params)
 
         params['gpxToHum'] = gpxToHum
         params['sdDir'] = inDir
@@ -352,7 +366,7 @@ def detect_main():
         print('***** DETECTING CRAB POTS *****')
         crabpots_master_func(**params)
 
-        print("\n\nTotal Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time_iter, ndigits=0)))    
+        print("\n\nTotal Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time_iter, ndigits=0)))
 
         sys.stdout.log.close()
             
@@ -363,5 +377,10 @@ def detect_main():
         sys.stdout = oldOutput
 
         # sys.exit()
+
+    # print('\n===========================================')
+    # print('===========================================')
+    # print('***** EXPORTING FINAL RESULTS *****')
+    # export_final_results(outDir, projName)
 
     print("\n\nGrand Total Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time, ndigits=0)))

@@ -92,7 +92,10 @@ def do_inference(in_dir: str, out_dir: str, detect_csv: str, export_image: bool=
     dfAll = pd.concat(r, axis=0)
 
     # Drop nan items
-    dfAll = dfAll.dropna(subset=['class_name'])
+    try:
+        dfAll = dfAll.dropna(subset=['class_name'])
+    except:
+        pass
 
     dfAll.to_csv(detect_csv, index=False)
 

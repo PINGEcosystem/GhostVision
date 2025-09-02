@@ -11,6 +11,7 @@ from ghostvisionRF.class_crabObj import crabObj
 
 from joblib import Parallel, delayed, cpu_count
 import pandas as pd
+import geopandas as gpd
 from glob import glob
 
 
@@ -217,35 +218,71 @@ def crabpots_master_func(logfilename = '',
             ###########################
             # Calculate mapped location
 
-        # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
-        detectDF = pd.read_csv(detect_csv)
+        # # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
+        # detectDF = pd.read_csv(detect_csv)
 
-        # Calculate ping index to get smoothed trackline data
-        detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
+        # # Calculate ping index to get smoothed trackline data
+        # detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
 
-        # Calculate target location
-        detectDF = son._calcDetectLoc(detectDF)
+        # # Calculate target location
+        # detectDF = son._calcDetectLoc(detectDF)
 
-        # Save all preds to csv
-        detectDF.to_csv(detect_csv, index=False)
+        # # Save all preds to csv
+        # detectDF.to_csv(detect_csv, index=False)
 
-        if inference_track:
-            # Summarize by target_id
-            detectDF = son._summarizeDetect(detectDF)
+        # if inference_track:
+        #     # Summarize by target_id
+        #     detectDF = son._summarizeDetect(detectDF)
 
-            detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
+        #     detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
 
-        # Create wpt shapefile and GPX
-        if len(detectDF)>0:
-            son._calcWpt(detectDF, outDir)
+        # # Create wpt shapefile and GPX
+        # if len(detectDF)>0:
+        #     son._calcWpt(detectDF, outDir)
+                
 
+    return
 
-    ####################################
-    # Combine all Shp & GPX files into 1
+#===========================================
+def export_final_results(outDir: str,
+                         projName: str):
+    '''
+    '''
+
+    # Create Output Folder
+    out = os.path.join(outDir, '0_GhostVision_FinalResults')
+    if not os.path.exists(out):
+        os.makedirs(out)
+
+    #########################
+    # Shapefile
 
     # Find all the shapefiles
+    shps = glob(os.path.join(outDir, '**', '*.shp'), recursive=True)
+    
+    allShps = []
+    for s in shps:
+        s = gpd.read_file(s)
+        allShps.append(s)
 
-    # shps = glob(os.path.join(outDir, '**', '.shp')) 
-                
+    gdf = gpd.GeoDataFrame(pd.concat(allShps, ignore_index=True))
+
+    outShp = '{}_GhostVisionDetects.shp'.format(projName)
+    outShp = os.path.join(out, outShp)
+
+    gdf.to_file(outShp)
+
+    #####
+    # GPX
+    outGpx = outShp.replace('.shp', '.gpx')
+
+    gdf = gdf.rename(columns={'tracker_id': 'name'})
+    gdf = gdf[['name', 'geometry']]
+    gdf.to_file(outGpx, 'GPX')
+
+    #################
+    # Raw CSV Results
+
+
 
     return
