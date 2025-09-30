@@ -1,0 +1,36 @@
+name: ghostvision
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.11                # stable & compatible with PyTorch builds
+  - pip
+  - git
+  - gdal
+  - numpy
+  - pandas
+  - geopandas
+  - pyproj
+  - scikit-image
+  - joblib
+  - matplotlib
+  - rasterio
+  - h5py
+  - opencv                   # install OpenCV from conda-forge (native binary)
+  - pytorch                  # install PyTorch from pytorch channel
+  - torchvision
+  - torchaudio
+  # put heavyweight binary deps in conda; keep the rest for pip
+  - pip:
+      - pingverter
+      - pingmapper
+      - pingwizard
+      - pinginstaller
+      - doodleverse_utils
+      - psutil
+      - transformers
+      - inference
+      - supervision
+      - trackers[cpu]
+      - trackers[deepsort]
+      - rsa
