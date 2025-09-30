@@ -12,7 +12,7 @@ sys.path.append(PACKAGE_DIR)
 
 def main(process):
 
-    from ghostvisionRF.detect import detect_main
+    from ghostvision.detect import detect_main
     detect_main()
 
 
@@ -28,12 +28,12 @@ if __name__ == "__main__":
         main(to_do)
 
     elif sys.argv[1] == "roboflow":
-        from ghostvisionRF.download_roboflow import get_model
+        from ghostvision.download_roboflow import get_model
 
         get_model()
 
     elif sys.argv[1] == "folder":
-        from ghostvisionRF.inference_folder import do_inference
+        from ghostvision.inference_folder import do_inference
 
         dir = sys.argv[2]
 

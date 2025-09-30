@@ -1,12 +1,13 @@
 name: ghostvision
 channels:
+  - pytorch
   - conda-forge
-  - defaults
 dependencies:
-  - python < 3.13
+  - python=3.11                # stable & compatible with PyTorch builds
+  - pip
+  - git
   - gdal
   - numpy
-  - git
   - pandas
   - geopandas
   - pyproj
@@ -15,7 +16,11 @@ dependencies:
   - matplotlib
   - rasterio
   - h5py
-  - pip
+  - opencv                   # install OpenCV from conda-forge (native binary)
+  - pytorch                  # install PyTorch from pytorch channel
+  - torchvision
+  - torchaudio
+  # put heavyweight binary deps in conda; keep the rest for pip
   - pip:
       - pingverter
       - pingmapper
@@ -23,12 +28,9 @@ dependencies:
       - pinginstaller
       - doodleverse_utils
       - psutil
-      - tensorflow
-      - tf-keras
       - transformers
-      - inference-gpu
+      - inference
       - supervision
-      - trackers
+      - trackers[cpu]
       - trackers[deepsort]
-      - opencv-python
       - rsa

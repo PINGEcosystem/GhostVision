@@ -3,17 +3,21 @@
 
 '''
 
-import os
+import os, sys
 import cv2
-# from pingmapper.funcs_common import *
-# from class_crabObj import crabObj
-from ghostvisionRF.class_crabObj import crabObj
+from ghostvision.class_crabObj import crabObj
 
 from joblib import Parallel, delayed, cpu_count
 import pandas as pd
 import geopandas as gpd
 from glob import glob
 
+# # Debug
+# detectPath = os.path.normpath('../PINGDetect')
+# detectPath = os.path.abspath(detectPath)
+# sys.path.insert(0, detectPath)
+
+from pingdetect.detect_spatial import calcDetectLoc, summarizeDetect, calcWpt, calcDetectIdx
 
 #===========================================
 def crabpots_master_func(logfilename = '',
@@ -223,23 +227,26 @@ def crabpots_master_func(logfilename = '',
             detectDF = pd.read_csv(detect_csv)
 
             # Calculate ping index to get smoothed trackline data
-            detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
+            smthTrkFile = son.smthTrkFile
+            detectDF = calcDetectIdx(smthTrkFile, detectDF, stride, son.nchunk)
 
             # Calculate target location
-            detectDF = son._calcDetectLoc(detectDF)
+            beamName = son.beamName
+            detectDF = calcDetectLoc(beamName, detectDF)
 
             # Save all preds to csv
             detectDF.to_csv(detect_csv, index=False)
 
             if inference_track:
                 # Summarize by target_id
-                detectDF = son._summarizeDetect(detectDF)
+                detectDF = summarizeDetect(detectDF)
 
                 detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
 
             # Create wpt shapefile and GPX
             if len(detectDF)>0:
-                son._calcWpt(detectDF, outDir)
+                projDir = son.projDir
+                calcWpt(detectDF, outDir, projDir)
                 
 
     return

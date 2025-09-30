@@ -31,7 +31,7 @@ PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.append(PACKAGE_DIR)
 
 # from main_crabDetect import crabpots_master_func
-from ghostvisionRF.main_crabDetect import crabpots_master_func, export_final_results
+from ghostvision.main_crabDetect import crabpots_master_func, export_final_results
 
 from glob import glob
 
@@ -170,8 +170,6 @@ def detect_main():
                 inFiles.append(os.path.join(root, file))
 
     inFiles = sorted(inFiles)
-
-    print(inFiles)
     
     
     
