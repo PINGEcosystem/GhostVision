@@ -19,6 +19,10 @@ def main(process):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 0:
+        to_do = 'detect'
+        main(to_do)
+    
     if len(sys.argv) == 1:
         to_do = 'detect'
         main(to_do)

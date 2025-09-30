@@ -5,7 +5,9 @@ Copyright (c) 2025 Cameron S. Bodine
 
 import os, sys
 from inference.models.utils import get_roboflow_model
+from inference import get_model
 from distutils.dir_util import copy_tree
+import shutil
 # from ultralytics import YOLO
 # import json
 # import roboflow
@@ -34,17 +36,43 @@ def get_model():
     # Get the model
     model = get_roboflow_model(model_id=my_model_id, api_key=my_api_key)
 
-    # # Copy the model
-    # source_dir = os.path.join("/tmp/cache", my_model_id)
-    # dest_dir = os.path.join(out_dir, my_model_id)
-    # copy_tree(source_dir, dest_dir)
+    # Copy the model
+    source_dir = os.path.join("/tmp/cache", my_model_id)
+    dest_dir = os.path.join(out_dir, my_model_id)
+
+    shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
+    
+    # try:
+    #     # prefer shutil.copytree (Python 3.8+) with dirs_exist_ok
+    #     shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
+    # except PermissionError:
+    #     # fallback: copy files one-by-one and ignore metadata errors (utime, copystat)
+    #     for root, dirs, files in os.walk(source_dir):
+    #         rel = os.path.relpath(root, source_dir)
+    #         target_root = os.path.join(dest_dir, rel) if rel != '.' else dest_dir
+    #         os.makedirs(target_root, exist_ok=True)
+    #         for fname in files:
+    #             src = os.path.join(root, fname)
+    #             dst = os.path.join(target_root, fname)
+    #             try:
+    #                 shutil.copyfile(src, dst)
+    #             except Exception:
+    #                 # if even copyfile fails, skip and continue
+    #                 continue
+    #             try:
+    #                 shutil.copystat(src, dst)
+    #             except PermissionError:
+    #                 # ignore permission errors when setting timestamps/mode
+    #                 pass
+
+    # except Exception as e:
+    #     # other errors: surface succinct message
+    #     raise RuntimeError(f"Failed to copy model from {source_dir} to {dest_dir}: {e}") from e
+
 
     # rf = roboflow.Roboflow(api_key=my_api_key)
     # model = rf.workspace().project(my_model_name).version(my_model_version).model
     # prediction = model.download()
-
-
-
 
 
     return

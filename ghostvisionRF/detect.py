@@ -16,8 +16,8 @@ import sys, os
 # Debug
 pingPath = os.path.normpath('../PINGMapper/pingmapper')
 pingPath = os.path.abspath(pingPath)
-sys.path.insert(0, pingPath)
-sys.path.insert(0, 'src')
+# sys.path.insert(0, pingPath)
+# sys.path.insert(0, 'src')
 # from funcs_common import *
 # from main_readFiles import read_master_func
 # from main_rectify import rectify_master_func
@@ -25,6 +25,10 @@ sys.path.insert(0, 'src')
 from pingmapper.funcs_common import *
 from pingmapper.main_readFiles import read_master_func
 from pingmapper.main_rectify import rectify_master_func
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PACKAGE_DIR = os.path.dirname(SCRIPT_DIR)
+sys.path.append(PACKAGE_DIR)
 
 # from main_crabDetect import crabpots_master_func
 from ghostvisionRF.main_crabDetect import crabpots_master_func, export_final_results
@@ -42,11 +46,12 @@ def detect_main():
     # Parameters
 
     # inDir = r'C:\Users\cbodine\Desktop\Crabpot_dev\recordings'
-    # outDir = r'C:\Users\cbodine\Desktop\Crabpot_dev\202507_test'
+    # outDir = r'C:\Users\cbodine\Desktop\Crabpot_dev'
+    # projName = r'202509_test'
 
-    inDir = r'/mnt/c/Users/cbodine/Desktop/DesktopStuff/Crabpot_dev/recordings'
-    outDir = r'/mnt/z/UDEL/Meetings&Presentations/Conference/2025_AFS/GhostVision/data/ijust_vids'
-    projName = r'202507_test'
+    inDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/recordings'
+    outDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/'
+    projName = r'202509_test_newpackage'
 
     project_mode = 1
     prefix = 'BEP2024_'
@@ -165,6 +170,8 @@ def detect_main():
                 inFiles.append(os.path.join(root, file))
 
     inFiles = sorted(inFiles)
+
+    print(inFiles)
     
     
     
@@ -180,6 +187,7 @@ def detect_main():
         print(i, ":", f)
 
     for datFile in inFiles:
+        print(datFile)
         logfilename = 'log_'+time.strftime("%Y-%m-%d_%H%M")+'.txt'
 
         
@@ -378,9 +386,13 @@ def detect_main():
 
         # sys.exit()
 
-    # print('\n===========================================')
-    # print('===========================================')
-    # print('***** EXPORTING FINAL RESULTS *****')
-    # export_final_results(outDir, projName)
+    print('\n===========================================')
+    print('===========================================')
+    print('***** EXPORTING FINAL RESULTS *****')
+    export_final_results(outDir, projName)
 
     print("\n\nGrand Total Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time, ndigits=0)))
+
+
+if __name__ == "__main__":
+    detect_main()

@@ -215,30 +215,31 @@ def crabpots_master_func(logfilename = '',
             son._detectTrackCrabPots(in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
 
 
-            ###########################
-            # Calculate mapped location
+        ###########################
+        # Calculate mapped location
 
-        # # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
-        # detectDF = pd.read_csv(detect_csv)
+        if os.path.exists(detect_csv):
+            # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
+            detectDF = pd.read_csv(detect_csv)
 
-        # # Calculate ping index to get smoothed trackline data
-        # detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
+            # Calculate ping index to get smoothed trackline data
+            detectDF = son._calcDetectIdx(detectDF, stride, son.nchunk)
 
-        # # Calculate target location
-        # detectDF = son._calcDetectLoc(detectDF)
+            # Calculate target location
+            detectDF = son._calcDetectLoc(detectDF)
 
-        # # Save all preds to csv
-        # detectDF.to_csv(detect_csv, index=False)
+            # Save all preds to csv
+            detectDF.to_csv(detect_csv, index=False)
 
-        # if inference_track:
-        #     # Summarize by target_id
-        #     detectDF = son._summarizeDetect(detectDF)
+            if inference_track:
+                # Summarize by target_id
+                detectDF = son._summarizeDetect(detectDF)
 
-        #     detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
+                detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
 
-        # # Create wpt shapefile and GPX
-        # if len(detectDF)>0:
-        #     son._calcWpt(detectDF, outDir)
+            # Create wpt shapefile and GPX
+            if len(detectDF)>0:
+                son._calcWpt(detectDF, outDir)
                 
 
     return
@@ -282,7 +283,7 @@ def export_final_results(outDir: str,
 
     #################
     # Raw CSV Results
-
+    gdf.to_csv(outShp.replace('.shp', '.csv'), index=False)
 
 
     return
