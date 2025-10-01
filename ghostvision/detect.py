@@ -161,37 +161,27 @@ def detect_main():
     layout = []
 
     # Title #
-    title = sg.Text("GhostVision", font=("Helvetica", 24), justification="center", size=(75, 1))
-    version = sg.Text("ver. {}".format(__version__), font=("Helvetica", 8), justification="center", size=(75, 1))
+    title = sg.Text("GhostVision", font=("Helvetica", 24), justification="center", size=(100,1))
+    version = sg.Text("ver. {}".format(__version__), font=("Helvetica", 8), justification="center", size=(100,1))
 
     layout.append([title])
     layout.append([version])
 
-
-    # Model Selection #
-    avail_models = get_avail_models()
-    model_label = sg.Text("Project Version:", size=(20, 1), font=("Helvetica", 12), justification="left")
-    model_list = sg.Combo(avail_models, key='rf_model', default_value='')
-
-    layout.append([model_label, model_list])
+    ####################
+    # General Parameters
+    text_general = sg.Text('General Parameters\n', font=("Helvetica", 14, "underline"))
 
 
     # Input Directory #
     in_dir_label = sg.Text('Path to SD Card Sonar Recordings')
     in_dir_path = sg.In(key='inDir', size=(80,1))
     in_dir_browse = sg.FolderBrowse(initial_folder='/')
-    
-    layout.append([in_dir_label])
-    layout.append([in_dir_path, in_dir_browse])
 
 
     # Output Directory #
     out_dir_label = sg.Text('Output Folder')
-    out_dir_path = sg.In(key='inDir', size=(80,1))
+    out_dir_path = sg.In(key='outDir', size=(80,1))
     out_dir_browse = sg.FolderBrowse(initial_folder=USER_DIR)
-    
-    layout.append([out_dir_label])
-    layout.append([out_dir_path, out_dir_browse])
 
 
     # Project Prfix and Suffix #
@@ -201,22 +191,46 @@ def detect_main():
     text_suffix = sg.Text('Project Name Suffix:', size=(20,1))
     in_suffix = sg.Input(key='suffix', size=(10,1))
 
-    layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
-
 
     # Waypoint prefix #
     wpt_label = sg.Text('Waypoint Prefix:', size=(20,1))
     wpt_input = sg.Input(key='wptPrefix', size=(10,1))
     wpt_check = sg.Checkbox('Export Detections to Humminbird SD Card', key='gpxToHum', default=True)
 
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_general])
+    layout.append([in_dir_label])
+    layout.append([in_dir_path, in_dir_browse])
+    layout.append([out_dir_label])
+    layout.append([out_dir_path, out_dir_browse])
+    layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
     layout.append([wpt_label, wpt_input, sg.VerticalSeparator(), wpt_check])
 
+
+    ##################
+    # Detection Params
+
+    text_detect = sg.Text('Detection Parameters\n', font=("Helvetica", 14, "underline"))
+
+
+    # Model Selection #
+    avail_models = get_avail_models()
+    model_label = sg.Text("Model Selection:", size=(20, 1), font=("Helvetica", 12), justification="left")
+    model_list = sg.Combo(avail_models, key='rf_model', default_value='')
+
+    
     # Confidence & IoU #
     conf_label = sg.Text('Confidence Threshold', size=(20,1))
     conf_slider = sg.Slider((0,1), key='confidence', default_value=0.5, resolution=0.05, tick_interval=0.5, orientation='horizontal')
     iou_label = sg.Text('IoU Threshold', size=(20,1))
     iou_slider = sg.Slider((0,1), key='iou_threshold', default_value=0.1, resolution=0.05, tick_interval=0.5, orientation='horizontal')
 
+
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_detect])
+    layout.append([model_label, model_list])
     layout.append([conf_label, conf_slider, sg.VerticalSeparator(), iou_label, iou_slider])
 
     #############
