@@ -3,7 +3,7 @@ channels:
   - pytorch
   - conda-forge
 dependencies:
-  - python=3.11                # stable & compatible with PyTorch builds
+  - python<3.13
   - pip
   - git
   - gdal
@@ -16,7 +16,6 @@ dependencies:
   - matplotlib
   - rasterio
   - h5py
-  - opencv                   # install OpenCV from conda-forge (native binary)
   - pytorch                  # install PyTorch from pytorch channel
   - torchvision
   - torchaudio
@@ -29,8 +28,10 @@ dependencies:
       - doodleverse_utils
       - psutil
       - transformers
+      - tensorflow
       - inference
       - supervision
       - trackers[cpu]
       - trackers[deepsort]
+      - opencv-python
       - rsa

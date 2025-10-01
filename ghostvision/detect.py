@@ -53,7 +53,7 @@ def detect_main():
     outDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/'
     projName = r'202509_test_newpackage'
 
-    project_mode = 1
+    project_mode = 2
     prefix = 'BEP2024_'
     suffix = ''
     gpxToHum = True
@@ -152,7 +152,7 @@ def detect_main():
     #============================================
 
     # Get processing script's dir so we can save it to file
-    scriptDir = os.path.join(os.getcwd(), 'ghostvisionRF')
+    scriptDir = SCRIPT_DIR
 
     # For the logfile
     oldOutput = sys.stdout
@@ -174,7 +174,7 @@ def detect_main():
     
     
     
-    # inFiles = [inFiles[0]]
+    inFiles = [inFiles[0]]
 
 
 
@@ -320,22 +320,22 @@ def detect_main():
 
         # try:
 
-        print('sonPath',sonPath)
-        print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
-        print('+++++++++++++++++++++++++++++++++++++++++++')
-        print('***** Working On *****')
-        print(humFile)
-        print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+        # print('sonPath',sonPath)
+        # print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
+        # print('+++++++++++++++++++++++++++++++++++++++++++')
+        # print('***** Working On *****')
+        # print(humFile)
+        # print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-        print('\n===========================================')
-        print('===========================================')
-        print('***** READING *****')
-        read_master_func(**params)
+        # print('\n===========================================')
+        # print('===========================================')
+        # print('***** READING *****')
+        # read_master_func(**params)
 
-        print('\n===========================================')
-        print('===========================================')
-        print('***** RECTIFYING *****')
-        rectify_master_func(**params)
+        # print('\n===========================================')
+        # print('===========================================')
+        # print('***** RECTIFYING *****')
+        # rectify_master_func(**params)
 
         params['gpxToHum'] = gpxToHum
         params['sdDir'] = inDir

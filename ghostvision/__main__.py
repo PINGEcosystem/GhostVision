@@ -32,9 +32,9 @@ if __name__ == "__main__":
 
         get_model()
 
-    elif sys.argv[1] == "folder":
-        from ghostvision.inference_folder import do_inference
+    # elif sys.argv[1] == "folder":
+    #     from ghostvision.inference_folder import do_inference
 
-        dir = sys.argv[2]
+    #     dir = sys.argv[2]
 
-        do_inference(dir)
+    #     do_inference(dir)
