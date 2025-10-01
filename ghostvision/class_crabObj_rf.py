@@ -43,17 +43,17 @@ class crabObj(rectObj):
         return
     
     #=======================================================================
-    def _detectCrabPots(self, in_dir: str, out_dir: str, detect_csv: str, export_image: bool=True, export_vid: bool=False, confidence: float=0.5, iou_threshold: float=0.5):
+    def _detectCrabPots(self, rf_model: str, in_dir: str, out_dir: str, detect_csv: str, export_image: bool=True, export_vid: bool=False, confidence: float=0.5, iou_threshold: float=0.5):
         '''
         '''
 
         # Do inference
-        do_inference(in_dir=in_dir, out_dir=out_dir, detect_csv=detect_csv, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+        do_inference(rf_model=rf_model, in_dir=in_dir, out_dir=out_dir, detect_csv=detect_csv, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
 
         return
     
     #=======================================================================
-    def _detectTrackCrabPots(self, in_vid: str, confidence: float=0.5, iou_threshold: float=0.5, stride: float=0.2, nchunk: int=500):
+    def _detectTrackCrabPots(self, rf_model: str, in_vid: str, confidence: float=0.5, iou_threshold: float=0.5, stride: float=0.2, nchunk: int=500):
         '''
         '''
 
@@ -63,7 +63,7 @@ class crabObj(rectObj):
         wcp_dir = os.path.join(self.outDir, wcp_dir_name)
 
         # Do inference
-        do_tracker_inference(in_vid=in_vid, confidence=confidence, iou_threshold=iou_threshold, stride=stride, nchunk=nchunk)
+        do_tracker_inference(rf_model=rf_model, in_vid=in_vid, confidence=confidence, iou_threshold=iou_threshold, stride=stride, nchunk=nchunk)
 
         return
     

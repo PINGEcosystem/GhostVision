@@ -1,6 +1,5 @@
 name: ghostvision
 channels:
-  - pytorch
   - conda-forge
 dependencies:
   - python<3.13
@@ -16,9 +15,6 @@ dependencies:
   - matplotlib
   - rasterio
   - h5py
-  - pytorch                  # install PyTorch from pytorch channel
-  - torchvision
-  - torchaudio
   # put heavyweight binary deps in conda; keep the rest for pip
   - pip:
       - pingverter

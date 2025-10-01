@@ -13,6 +13,8 @@ Automated crab pot detection from Humminbird side imaging systems:
 # Imports
 import sys, os
 
+from .version import __version__
+
 # Debug
 pingPath = os.path.normpath('../PINGMapper/pingmapper')
 pingPath = os.path.abspath(pingPath)
@@ -40,47 +42,50 @@ filter_time_csv = os.path.normpath(filter_time_csv)
 
 start_time = time.time()
 
+# Set GHOSTVISION utils dir
+USER_DIR = os.path.expanduser('~')
+GV_UTILS_DIR = os.path.join(USER_DIR, '.ghostvision')
+rf_model_dir = os.path.join(GV_UTILS_DIR, 'models')
+
 def detect_main():
 
     #============================================
     # Parameters
 
-    # inDir = r'C:\Users\cbodine\Desktop\Crabpot_dev\recordings'
-    # outDir = r'C:\Users\cbodine\Desktop\Crabpot_dev'
-    # projName = r'202509_test'
+    # inDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/recordings'
+    # outDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/'
+    # projName = r'202509_test_newpackage'
 
-    inDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/recordings'
-    outDir = r'/mnt/c/Users/cbodine/Desktop/Crabpot_dev/'
-    projName = r'202509_test_newpackage'
+    # rf_model = 'allcrabpotsources/11'  # Roboflow model name or path to local model
 
-    project_mode = 2
-    prefix = 'BEP2024_'
-    suffix = ''
-    gpxToHum = True
-    confidence = 0.5
-    iou_threshold = 0.1
-    egn = False
-    egn_stretch = 1
+    # project_mode = 2
+    # prefix = 'BEP2024_'
+    # suffix = ''
+    # gpxToHum = True
+    # confidence = 0.5
+    # iou_threshold = 0.1
+    # egn = False
+    # egn_stretch = 1
 
-    nchunk = 500
-    cropRange = 25
-    rectMethod='Heading'
-    rect_wcp = False
+    # nchunk = 500
+    # cropRange = 25
+    # rectMethod='COG'
+    # rect_wcp = False
 
-    moving_window = True
-    window_stride = 0.05 #0.05
+    # moving_window = True
+    # window_stride = 0.05 #0.05
 
-    export_image = True
-    export_vid = True
+    # export_image = True
+    # export_vid = True
 
-    inference_track = True
-    track_cnt_thresh = 0.25 # Percent of time the target is seen in window to keep
-    tracker_cnt = int((nchunk / (window_stride*nchunk)) * track_cnt_thresh)
+    # inference_track = True
+    # track_cnt_thresh = 0.25 # Percent of time the target is seen in window to keep
+    # tracker_cnt = int((nchunk / (window_stride*nchunk)) * track_cnt_thresh)
 
-    time_table = False
+    # time_table = False
 
-    # For the logfile
-    oldOutput = sys.stdout
+    # # For the logfile
+    # oldOutput = sys.stdout
 
     #============================================
 
@@ -143,6 +148,99 @@ def detect_main():
     # cropRange = int(values['cropRange'])
 
     # project_mode=2
+
+
+
+    
+
+    ############
+    # Set Up GUI
+
+    import PySimpleGUI as sg
+
+    layout = []
+
+    # Title #
+    title = sg.Text("GhostVision", font=("Helvetica", 24), justification="center", size=(75, 1))
+    version = sg.Text("ver. {}".format(__version__), font=("Helvetica", 8), justification="center", size=(75, 1))
+
+    layout.append([title])
+    layout.append([version])
+
+
+    # Model Selection #
+    avail_models = get_avail_models()
+    model_label = sg.Text("Project Version:", size=(20, 1), font=("Helvetica", 12), justification="left")
+    model_list = sg.Combo(avail_models, key='rf_model', default_value='')
+
+    layout.append([model_label, model_list])
+
+
+    # Input Directory #
+    in_dir_label = sg.Text('Path to SD Card Sonar Recordings')
+    in_dir_path = sg.In(key='inDir', size=(80,1))
+    in_dir_browse = sg.FolderBrowse(initial_folder='/')
+    
+    layout.append([in_dir_label])
+    layout.append([in_dir_path, in_dir_browse])
+
+
+    # Output Directory #
+    out_dir_label = sg.Text('Output Folder')
+    out_dir_path = sg.In(key='inDir', size=(80,1))
+    out_dir_browse = sg.FolderBrowse(initial_folder=USER_DIR)
+    
+    layout.append([out_dir_label])
+    layout.append([out_dir_path, out_dir_browse])
+
+
+    # Project Prfix and Suffix #
+    text_prefix = sg.Text('Project Name Prefix:', size=(20,1))
+    in_prefix = sg.Input(key='prefix', size=(10,1))
+
+    text_suffix = sg.Text('Project Name Suffix:', size=(20,1))
+    in_suffix = sg.Input(key='suffix', size=(10,1))
+
+    layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
+
+
+    # Waypoint prefix #
+    wpt_label = sg.Text('Waypoint Prefix:', size=(20,1))
+    wpt_input = sg.Input(key='wptPrefix', size=(10,1))
+    wpt_check = sg.Checkbox('Export Detections to Humminbird SD Card', key='gpxToHum', default=True)
+
+    layout.append([wpt_label, wpt_input, sg.VerticalSeparator(), wpt_check])
+
+    # Confidence & IoU #
+    conf_label = sg.Text('Confidence Threshold', size=(20,1))
+    conf_slider = sg.Slider((0,1), key='confidence', default_value=0.5, resolution=0.05, tick_interval=0.5, orientation='horizontal')
+    iou_label = sg.Text('IoU Threshold', size=(20,1))
+    iou_slider = sg.Slider((0,1), key='iou_threshold', default_value=0.1, resolution=0.05, tick_interval=0.5, orientation='horizontal')
+
+    layout.append([conf_label, conf_slider, sg.VerticalSeparator(), iou_label, iou_slider])
+
+    #############
+    # Exit Button
+    exit_btn = sg.Button("Quit", key="exit_ghostvision", font=("Helvetica", 12, "bold"), button_color="darkred", size=(10, 1))
+
+    layout.append([exit_btn])
+
+    layout2 =[[sg.Column(layout, scrollable=True,  vertical_scroll_only=True, size_subsample_height=1)]]
+    window = sg.Window('GhostVision', layout2, resizable=True)
+
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'exit_ghostvision' or event == 'Cancel':
+            print('Exiting.')
+            sys.exit()
+        if event == 'Submit':
+            # my_api_key, my_model_name, my_model_ver = saveModelParams(values, utils_dir)
+            break
+
+    window.close()
+    #########
+    # End GUI
+
 
     inDir = os.path.normpath(inDir)
     outDir = os.path.normpath(outDir)
@@ -337,6 +435,7 @@ def detect_main():
         # print('***** RECTIFYING *****')
         # rectify_master_func(**params)
 
+        params['rf_model'] = rf_model
         params['gpxToHum'] = gpxToHum
         params['sdDir'] = inDir
         params['confidence'] = confidence
@@ -391,6 +490,21 @@ def detect_main():
 
     print("\n\nGrand Total Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time, ndigits=0)))
 
+def get_avail_models():
+
+    # Get projects in directory
+    projects = os.listdir(rf_model_dir)
+
+    
+    # Find all folders and subfolders in rf_model_dir
+    avail_models = []
+    for proj in projects:
+        versions = os.listdir(os.path.join(rf_model_dir, proj))
+
+        for v in versions:
+            avail_models.append('{}/{}'.format(proj, v))
+
+    return avail_models
 
 if __name__ == "__main__":
     detect_main()

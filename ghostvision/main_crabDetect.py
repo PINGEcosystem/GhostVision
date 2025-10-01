@@ -5,7 +5,7 @@
 
 import os, sys
 import cv2
-from ghostvision.class_crabObj import crabObj
+from ghostvision.class_crabObj_rf import crabObj
 
 from joblib import Parallel, delayed, cpu_count
 import pandas as pd
@@ -18,6 +18,10 @@ from glob import glob
 # sys.path.insert(0, detectPath)
 
 from pingdetect.detect_spatial import calcDetectLoc, summarizeDetect, calcWpt, calcDetectIdx
+
+# Set GHOSTVISION utils dir
+USER_DIR = os.path.expanduser('~')
+GV_UTILS_DIR = os.path.join(USER_DIR, '.ghostvision')
 
 #===========================================
 def crabpots_master_func(logfilename = '',
@@ -80,6 +84,7 @@ def crabpots_master_func(logfilename = '',
                         mosaic = False,
                         map_mosaic = 0,
                         banklines = False,
+                        rf_model = '',
                         gpxToHum = True,
                         sdDir = '',
                         confidence = 0.5,
@@ -132,6 +137,20 @@ def crabpots_master_func(logfilename = '',
             crabObjs.append(son) # Store mapObj() in mapObjs[]
     del meta, metaFiles
 
+    ###
+    # Copy model to /tmp/cache for roboflow
+    if rf_model != '':
+        import shutil
+        tmp_model_dir = r'/tmp/cache'
+        tmp_model_dir = os.path.join(tmp_model_dir, rf_model)
+
+        rf_model_dir = os.path.join(GV_UTILS_DIR, 'models', rf_model)
+
+        if os.path.exists(tmp_model_dir):
+            shutil.rmtree(tmp_model_dir)
+        
+        shutil.copytree(rf_model_dir, tmp_model_dir)
+
     ##############
     # Do inference
     for son in crabObjs:
@@ -153,7 +172,7 @@ def crabpots_master_func(logfilename = '',
             detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_ALL.csv'.format(projName, channel))
 
             # Inference
-            son._detectCrabPots(in_dir=wcp_dir, out_dir=outDir, detect_csv=detect_csv, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
+            son._detectCrabPots(rf_model=rf_model, in_dir=wcp_dir, out_dir=outDir, detect_csv=detect_csv, export_image=export_image, confidence=confidence, iou_threshold=iou_threshold)
 
             # Video
             if export_image and export_vid:
@@ -216,7 +235,7 @@ def crabpots_master_func(logfilename = '',
 
             #######################
             # Do inference tracking
-            son._detectTrackCrabPots(in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
+            son._detectTrackCrabPots(rf_model=rf_model, in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
 
 
         ###########################
@@ -232,7 +251,11 @@ def crabpots_master_func(logfilename = '',
 
             # Calculate target location
             beamName = son.beamName
-            detectDF = calcDetectLoc(beamName, detectDF)
+            if rectMethod == 'Heading':
+                cog = False
+            else:
+                cog = True
+            detectDF = calcDetectLoc(beamName, detectDF, cog=cog)
 
             # Save all preds to csv
             detectDF.to_csv(detect_csv, index=False)
@@ -248,6 +271,14 @@ def crabpots_master_func(logfilename = '',
                 projDir = son.projDir
                 calcWpt(detectDF, outDir, projDir)
                 
+    # Delete model
+    tmp_model_dir = r'/tmp/cache'
+    tmp_model_dir = os.path.join(tmp_model_dir, rf_model)
+    tmp_model_dir = os.path.dirname(tmp_model_dir)
+    if os.path.exists(tmp_model_dir):
+        import shutil
+        shutil.rmtree(tmp_model_dir)
+
 
     return
 
