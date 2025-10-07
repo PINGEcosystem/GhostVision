@@ -12,12 +12,15 @@ Automated crab pot detection from Humminbird side imaging systems:
 
 # Imports
 import sys, os
+import shutil
+import time, datetime
+import json
 
 from .version import __version__
 
-# Debug
-pingPath = os.path.normpath('../PINGMapper/pingmapper')
-pingPath = os.path.abspath(pingPath)
+# # Debug
+# pingPath = os.path.normpath('../PINGMapper/pingmapper')
+# pingPath = os.path.abspath(pingPath)
 # sys.path.insert(0, pingPath)
 # sys.path.insert(0, 'src')
 # from funcs_common import *
@@ -37,17 +40,25 @@ from ghostvision.main_crabDetect import crabpots_master_func, export_final_resul
 
 from glob import glob
 
-filter_time_csv = os.path.join(pingPath, 'clip_table.csv')
-filter_time_csv = os.path.normpath(filter_time_csv)
-
-start_time = time.time()
-
 # Set GHOSTVISION utils dir
 USER_DIR = os.path.expanduser('~')
 GV_UTILS_DIR = os.path.join(USER_DIR, '.ghostvision')
 rf_model_dir = os.path.join(GV_UTILS_DIR, 'models')
 
-def detect_main():
+filter_time_csv = os.path.join(GV_UTILS_DIR, 'clip_table.csv')
+filter_time_csv = os.path.normpath(filter_time_csv)
+
+def detect_main(batch: bool=True):
+
+    # For the logfile
+    oldOutput = sys.stdout
+
+    start_time = time.time()
+
+    #============================================
+    # Default Parameters - Not planned to change
+    nchunk = 500
+    rectMethod='COG'
 
     #============================================
     # Parameters
@@ -64,13 +75,8 @@ def detect_main():
     # gpxToHum = True
     # confidence = 0.5
     # iou_threshold = 0.1
-    # egn = False
-    # egn_stretch = 1
 
-    # nchunk = 500
     # cropRange = 25
-    # rectMethod='COG'
-    # rect_wcp = False
 
     # moving_window = True
     # window_stride = 0.05 #0.05
@@ -83,9 +89,6 @@ def detect_main():
     # tracker_cnt = int((nchunk / (window_stride*nchunk)) * track_cnt_thresh)
 
     # time_table = False
-
-    # # For the logfile
-    # oldOutput = sys.stdout
 
     #============================================
 
@@ -109,48 +112,30 @@ def detect_main():
     # # aoi = '/home/cbodine/Desktop/CrabPot_Workshop_LiveDemo/Rec00002/PINGMapper_aoi/PINGMapper_aoi_coverage.shp'
 
 
-    # layout = [
-    #     [sg.Text('Path to SD Card Sonar Recordings')],
-    #     [sg.In(key='inDir', size=(80,1)), sg.FolderBrowse(initial_folder=inDirInit)],
-    #     [sg.Text('Output Folder')],
-    #     [sg.In(key='outDir', size=(80,1)), sg.FolderBrowse(initial_folder=outDirInit)],
-    #     [sg.Text('Project Name Prefix:', size=(20,1)), sg.Input(key='prefix', size=(10,1), default_text=prefixDefault), sg.VerticalSeparator(), sg.Text('Project Name Suffix:', size=(20,1)), sg.Input(key='suffix', size=(10,1))],
-    #     [sg.Text('Waypoint Prefix:', size=(20,1)), sg.Input(key='wptPrefix', size=(10,1))],
-    #     [sg.Checkbox('Export Detections to Humminbird SD Card', key='gpxToHum', default=True), sg.VerticalSeparator(), sg.Text('Confidence Threshold', size=(20,1)),sg.Slider((0,1), key='threshold', default_value=0.5, resolution=0.01, tick_interval=0.5, orientation='horizontal')],
-    #     [sg.Text('Crop Range:', size=(10,1)), sg.Input(key='cropRange', size=(10,1), default_text=cropRangeDefault)],
-    #     [sg.Text('Position Corrections')],
-    #     [sg.Text('Transducer Offset [X]:', size=(22,1)), sg.Input(key='x_offset', default_text=0.0, size=(10,1)), sg.VerticalSeparator(), sg.Text('Transducer Offset [Y]:', size=(22,1)), sg.Input(key='y_offset', default_text=0.0, size=(10,1))],
-    #     [sg.Submit('Detect Crab Pots'), sg.Quit()]
-    # ]
+    #============================================
 
-    # # layout2 =[[sg.Column(layout, scrollable=True,  vertical_scroll_only=True, size_subsample_height=2)]]
-    # layout2 = [[sg.Column(layout)]]
-    # window = sg.Window('Detect Crab Pots', layout2, resizable=True)
+    # Default Values
+    # Edit values below to change default values in gui
+    primary_default_params = os.path.join(SCRIPT_DIR, "default_params.json")
 
+    if not os.path.exists(primary_default_params):
+        d = os.environ['CONDA_PREFIX']
+        primary_default_params = os.path.join(d, 'ghostvision_config', 'default_params.json')
+    
+    default_params_file = os.path.join(GV_UTILS_DIR, "user_params.json")
 
-    # while True:
-    #     event, values = window.read()
-    #     if event == "Quit" or event == 'Detect Crab Pots':
-    #         break
+    if not os.path.exists(default_params_file):
+        default_params_file = primary_default_params
+    with open(default_params_file) as f:
+        default_params = json.load(f)
 
-    # window.close()
+    # Make sure all params in user params
+    with open(primary_default_params) as f:
+        primary_defaults = json.load(f)
 
-    # if event == "Quit":
-    #     sys.exit()
-
-    # # Get parameters from GUI
-    # inDir = values['inDir']
-    # outDir = values['outDir']
-    # prefix = values['prefix']
-    # suffix = values['suffix']
-    # gpxToHum = values['gpxToHum']
-    # threshold = values['threshold']
-    # cropRange = int(values['cropRange'])
-
-    # project_mode=2
-
-
-
+    for k, v in primary_defaults.items():
+        if k not in default_params:
+            default_params[k] = v
     
 
     ############
@@ -169,43 +154,136 @@ def detect_main():
 
     ####################
     # General Parameters
-    text_general = sg.Text('General Parameters\n', font=("Helvetica", 14, "underline"))
+    text_io = sg.Text('I/O\n', font=("Helvetica", 14, "underline"))
 
 
-    # Input Directory #
-    in_dir_label = sg.Text('Path to SD Card Sonar Recordings')
-    in_dir_path = sg.In(key='inDir', size=(80,1))
-    in_dir_browse = sg.FolderBrowse(initial_folder='/')
+    if batch:
+        text_input = sg.Text('Parent Folder of Recordings to Process')
+        # in_input = sg.In(key='inDir', size=(80,1))
+        in_input = sg.In(key='inDir', size=(80,1), default_text=default_params['inDir'])
+        browse_input = sg.FolderBrowse(initial_folder=(default_params['inDir']))
+
+    else:
+        text_input = sg.Text('Recording to Process')
+        # in_input = sg.In(key='inFile', size=(80,1))
+        in_input = sg.In(key='inFile', size=(80,1), default_text=default_params['inFile'])
+        browse_input = sg.FileBrowse(file_types=(("Sonar File", "*.DAT *.sl2 *.sl3 *.RSD *.svlog") ), initial_folder=os.path.dirname(default_params['inFile']))
+        # browse_input = sg.FileBrowse(file_types=(("Sonar File", "*.DAT *.sl2 *.sl3 *.svlog") ), initial_folder=os.path.dirname(default_params['inFile']))
+
+    # Add to layout
+    layout.append([text_io])
+    layout.append([text_input])
+    layout.append([in_input, browse_input])
+
+    ###################
+    # Output parameters
+    text_output = sg.Text('Output Folder')
+    # in_output = sg.In(key='proj', size=(80,1))
+    in_output = sg.In(key='proj', size=(80,1), default_text=default_params['proj'])
+    browse_output = sg.FolderBrowse(initial_folder=os.path.dirname(default_params['proj']))
+
+    # Overwrite
+    check_overwrite = sg.Checkbox('Overwrite Existing Project', key='project_mode', default=default_params['project_mode'])
 
 
-    # Output Directory #
-    out_dir_label = sg.Text('Output Folder')
-    out_dir_path = sg.In(key='outDir', size=(80,1))
-    out_dir_browse = sg.FolderBrowse(initial_folder=USER_DIR)
+    # Add to layout
+    layout.append([text_output])
+    layout.append([in_output, browse_output])
+    layout.append([check_overwrite])
 
+    ##############
+    # Project Name
+    if batch:
+        text_prefix = sg.Text('Project Name Prefix:', size=(20,1))
+        in_prefix = sg.Input(key='prefix', size=(10,1))
 
-    # Project Prfix and Suffix #
-    text_prefix = sg.Text('Project Name Prefix:', size=(20,1))
-    in_prefix = sg.Input(key='prefix', size=(10,1))
+        text_suffix = sg.Text('Project Name Suffix:', size=(20,1))
+        in_suffix = sg.Input(key='suffix', size=(10,1))
 
-    text_suffix = sg.Text('Project Name Suffix:', size=(20,1))
-    in_suffix = sg.Input(key='suffix', size=(10,1))
+        # Add to layout
+        layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
+
+    else:
+        text_project = sg.Text('Project Name', size=(15,1))
+        in_project = sg.InputText(key='projName', size=(50,1), default_text=os.path.basename(default_params['projDir']))
+
+        # Add to layout
+        layout.append([text_project, in_project])
 
 
     # Waypoint prefix #
     wpt_label = sg.Text('Waypoint Prefix:', size=(20,1))
-    wpt_input = sg.Input(key='wptPrefix', size=(10,1))
-    wpt_check = sg.Checkbox('Export Detections to Humminbird SD Card', key='gpxToHum', default=True)
+    wpt_input = sg.Input(key='wptPrefix', size=(10,1), default_text=default_params['wptPrefix'])
+    wpt_check = sg.Checkbox('Export Detections to Humminbird SD Card', key='gpxToHum', default=default_params['gpxToHum'])
+
+    # Chunk
+    text_chunk = sg.Text('Chunk Size', size=(20,1))
+    in_chunk = sg.Input(key='nchunk', default_text=default_params['nchunk'], size=(10,1))
+
+    
+    # layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
+    layout.append([wpt_label, wpt_input, sg.VerticalSeparator(), wpt_check])
+    layout.append([text_chunk, in_chunk])
+
+
+    ###########
+    # Filtering
+    text_filtering = sg.Text('Filter Sonar Log\n', font=("Helvetica", 14, "underline"))
+
+    # Cropping
+    text_crop = sg.Text('Crop Range [m]', size=(22,1))
+    in_crop = sg.Input(key='cropRange', default_text=default_params['cropRange'], size=(10,1))
+
+    # Heading
+    text_heading = sg.Text('Max. Heading Deviation [deg]:', size=(22,1))
+    in_heading = sg.Input(key='max_heading_deviation', default_text=default_params['max_heading_deviation'], size=(10,1))
+    text_distance = sg.Text('Distance [m]:', size=(15,1))
+    in_distance = sg.Input(key='max_heading_distance', default_text=default_params['max_heading_distance'], size=(10,1))
+
+    # Speed
+    text_speed_min = sg.Text('Min. Speed [m/s]:', size=(22,1))
+    in_speed_min = sg.Input(key='min_speed', default_text=default_params['min_speed'], size=(10,1))
+    text_speed_max = sg.Text('Max. Speed [m/s]:', size=(15,1))
+    in_speed_max = sg.Input(key='max_speed', default_text=default_params['max_speed'], size=(10,1))
+
+    # AOI
+    text_aoi = sg.Text('AOI')
+    in_aoi = sg.In(size=(80,1))
+    browse_aoi = sg.FileBrowse(key='aoi', file_types=(("Shapefile", "*.shp"), (".plan File", "*.plan")), initial_folder=os.path.dirname(default_params['aoi']))
+
+    # Time table
+    button_time_table = sg.Button('Edit Table')
+    check_time_load = sg.Checkbox('Filter by Time', key='filter_table', default=default_params['filter_table'])
 
     # Add to layout
     layout.append([sg.HorizontalSeparator()])
-    layout.append([text_general])
-    layout.append([in_dir_label])
-    layout.append([in_dir_path, in_dir_browse])
-    layout.append([out_dir_label])
-    layout.append([out_dir_path, out_dir_browse])
-    layout.append([text_prefix, in_prefix, sg.VerticalSeparator(), text_suffix, in_suffix])
-    layout.append([wpt_label, wpt_input, sg.VerticalSeparator(), wpt_check])
+    layout.append([text_filtering])
+    layout.append([text_crop, in_crop])
+    layout.append([text_heading, in_heading, sg.VerticalSeparator(), text_distance, in_distance])
+    layout.append([text_speed_min, in_speed_min, sg.VerticalSeparator(), text_speed_max, in_speed_max])
+    layout.append([text_aoi])
+    layout.append([in_aoi, browse_aoi])
+    layout.append([check_time_load, button_time_table])
+
+
+    ######################
+    # Position Corrections
+
+    # Position text
+    text_position = sg.Text('Position Corrections\n', font=("Helvetica", 14, "underline"))
+
+    # X offset
+    text_x_offset = sg.Text('Transducer Offset [X]:', size=(22,1))
+    in_x_offset = sg.Input(key='x_offset', default_text=default_params['x_offset'], size=(10,1))
+    
+    # Y offset
+    text_y_offset = sg.Text('Transducer Offset [Y]:', size=(22,1))
+    in_y_offset = sg.Input(key='y_offset', default_text=default_params['y_offset'], size=(10,1))
+
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_position])
+    layout.append([text_x_offset, in_x_offset, sg.VerticalSeparator(), text_y_offset, in_y_offset])
 
 
     ##################
@@ -217,281 +295,389 @@ def detect_main():
     # Model Selection #
     avail_models = get_avail_models()
     model_label = sg.Text("Model Selection:", size=(20, 1), font=("Helvetica", 12), justification="left")
-    model_list = sg.Combo(avail_models, key='rf_model', default_value='')
+    model_list = sg.Combo(avail_models, key='rf_model', default_value=default_params['rf_model'])
 
     
     # Confidence & IoU #
     conf_label = sg.Text('Confidence Threshold', size=(20,1))
-    conf_slider = sg.Slider((0,1), key='confidence', default_value=0.5, resolution=0.05, tick_interval=0.5, orientation='horizontal')
+    conf_slider = sg.Slider((0,1), key='confidence', default_value=default_params['confidence'], resolution=0.05, tick_interval=0.25, orientation='horizontal')
     iou_label = sg.Text('IoU Threshold', size=(20,1))
-    iou_slider = sg.Slider((0,1), key='iou_threshold', default_value=0.1, resolution=0.05, tick_interval=0.5, orientation='horizontal')
+    iou_slider = sg.Slider((0,1), key='iou_threshold', default_value=default_params['iou_threshold'], resolution=0.05, tick_interval=0.25, orientation='horizontal')
 
+    # Moving Window #
+    check_mov_win = sg.Checkbox('Moving Window', key='moving_window', default=default_params['moving_window'], enable_events=True)
+    if default_params['moving_window'] == True:
+        mov_win_status = False
+    else:
+        mov_win_status = True
+    text_mov_win = sg.Text('Window Stride', size=(20,1))
+    slide_mov_win = sg.Slider((0,1), key='window_stride', default_value=default_params['window_stride'], resolution=0.025, tick_interval=0.25, orientation='horizontal', disabled=mov_win_status)
+
+    col_detect_1 = sg.Column([[model_label, model_list], 
+                              [check_mov_win],
+                              [text_mov_win, slide_mov_win]], 
+                              vertical_alignment='top')
+    
+    col_detect_2 = sg.Column([[conf_label, conf_slider],
+                              [iou_label, iou_slider]],
+                              vertical_alignment='top')
 
     # Add to layout
     layout.append([sg.HorizontalSeparator()])
     layout.append([text_detect])
-    layout.append([model_label, model_list])
-    layout.append([conf_label, conf_slider, sg.VerticalSeparator(), iou_label, iou_slider])
+    layout.append([col_detect_1, sg.VerticalSeparator(), col_detect_2])
 
-    #############
-    # Exit Button
-    exit_btn = sg.Button("Quit", key="exit_ghostvision", font=("Helvetica", 12, "bold"), button_color="darkred", size=(10, 1))
 
-    layout.append([exit_btn])
+    ########################
+    # Object Tracking Params
 
-    layout2 =[[sg.Column(layout, scrollable=True,  vertical_scroll_only=True, size_subsample_height=1)]]
+    text_track = sg.Text('Object Tracking Parameters\n', font=("Helvetica", 14, "underline"))
+
+    # Inference Tracking #
+    check_track = sg.Checkbox('Track Objects', key='inference_track', default=default_params['inference_track'], enable_events=True)
+    if default_params['inference_track'] == True:
+        track_status = False
+    else:
+        track_status = True
+    text_track_thresh = sg.Text('Tracking Threshold', size=(20,1))
+    slide_track = sg.Slider((0,1), key='track_cnt_thresh', default_value=default_params['track_cnt_thresh'], resolution=0.05, tick_interval=0.25, orientation='horizontal', disabled=track_status)
+
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_track])
+    layout.append([check_track, sg.VerticalSeparator(), text_track_thresh, slide_track])
+
+    #########
+    # Exports
+
+    text_exports = sg.Text('Export Options\n', font=("Helvetica", 14, "underline"))
+
+    # Export Image
+    check_image = sg.Checkbox('Export Detection Images', key='export_image', default=default_params['export_image'])
+    # Export Video
+    check_video = sg.Checkbox('Export Detection Videos', key='export_vid', default=default_params['export_vid'])
+
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_exports])
+    layout.append([check_image, sg.VerticalSeparator(), check_video])
+
+    #####################
+    # Submit/quit buttons
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([sg.Push(), sg.Submit(), sg.Quit(), sg.Button('Save Defaults'), sg.Push()])
+
+    layout2 =[[sg.Column(layout, scrollable=True,  vertical_scroll_only=True, size_subsample_height=2)]]
     window = sg.Window('GhostVision', layout2, resizable=True)
 
     while True:
         event, values = window.read()
-        if event == sg.WIN_CLOSED or event == 'exit_ghostvision' or event == 'Cancel':
-            print('Exiting.')
-            sys.exit()
-        if event == 'Submit':
-            # my_api_key, my_model_name, my_model_ver = saveModelParams(values, utils_dir)
+        if event == "Quit" or event == 'Submit':
             break
+
+        if event == "Save Defaults":
+            from pingmapper.funcs_common import saveDefaultParams
+            user_params = os.path.join(GV_UTILS_DIR, "user_params.json")
+            saveDefaultParams(values, user_params)
+
+        if event == 'Edit Table':
+            from pingmapper.funcs_common import clip_table
+            clip_table(filter_time_csv)
+
+        if event == 'moving_window':
+            if values['moving_window'] == True:
+                window['window_stride'].update(disabled=False)
+            else:
+                window['window_stride'].update(disabled=True)
+
+        if event == 'inference_track':
+            if values['inference_track'] == True:
+                window['track_cnt_thresh'].update(disabled=False)
+            else:
+                window['track_cnt_thresh'].update(disabled=True)
 
     window.close()
     #########
     # End GUI
 
+    if event == "Quit":
+        sys.exit()
 
-    inDir = os.path.normpath(inDir)
-    outDir = os.path.normpath(outDir)
-    outDir = os.path.join(outDir, projName)
+    outDir = os.path.normpath(values['proj'])
 
+    if batch:
+        inDir = os.path.normpath(values['inDir'])
+
+    #################################
+    # Convert parameters if necessary
+
+    if values['filter_table']:
+        time_table = filter_time_csv
+    else:
+        time_table = False
+
+    # AOI
+    aoi = values['aoi']
+    if aoi == '':
+        aoi = False
 
     #============================================
 
-    # Get processing script's dir so we can save it to file
-    scriptDir = SCRIPT_DIR
+    # params = {
+    #     'project_mode':int(values['project_mode']),
+    #     'nchunk': int(values['nchunk']),
+    #     'aoi': values['aoi'],
+    #     'cropRange': float(values['cropRange']),
+    #     'threadCnt':0.5,
+    #     'aoi':aoi,
+    #     'max_heading_deviation':float(values['max_heading_deviation']),
+    #     'max_heading_distance':float(values['max_heading_distance']),
+    #     'min_speed':float(values['min_speed']),
+    #     'max_speed':float(values['max_speed']),
+    #     'time_table':time_table,
+    #     # 'rect_wcp': values['rect_wcp'],
+    #     'x_offset':float(values['x_offset']),
+    #     'y_offset':float(values['y_offset']),
+    #     'moving_window': bool(values['moving_window']),
+    #     'window_stride': float(values['window_stride']),
+    #     'wcp':True,
+    #     'rectMethod':rectMethod
+    # }
 
-    # For the logfile
-    oldOutput = sys.stdout
-
-    # For the logfile
-    logfilename = 'log_'+time.strftime("%Y-%m-%d_%H%M")+'.txt'
+    # globals().update(params)    
 
     #============================================
 
     # Find all DAT and SON files in all subdirectories of inDir
-    inFiles=[]
-    for root, dirs, files in os.walk(inDir):
-        for file in files:
-            if file.endswith('.DAT') and 'Trash' not in root:
-                inFiles.append(os.path.join(root, file))
+    if batch:
+        # Find all DAT and SON files in all subdirectories of inDir
+        inFiles=[]
+        for root, dirs, files in os.walk(inDir):
+            if '__MACOSX' not in root:
+                for file in files:
+                    if file.endswith('.DAT') or file.endswith('.sl2') or file.endswith('.sl3') or file.endswith('.RSD') or file.endswith('.svlog'):
+                        inFiles.append(os.path.join(root, file))
 
-    inFiles = sorted(inFiles)
+        inFiles = sorted(inFiles)
+
+    else:
+        inFiles = [values['inFile']]
     
     
     
     
-    inFiles = [inFiles[0]]
+    inFiles = inFiles[:2] # for testing
 
 
 
+    #============================================
+    # # Copy inFiles to outDir
+    # if not os.path.exists(outDir):
+    #     os.mkdir(outDir)
 
+    # recordings = os.path.join(outDir, 'recordings')
+    # if not os.path.exists(recordings):
+    #     os.mkdir(recordings)
 
+    #     for f in inFiles:
+    #         shutil.copy(f, recordings)
+
+    #         if f.endswith('.DAT'):
+    #             sonPath = f.split('.DAT')[0]
+    #             shutil.copytree(sonPath, os.path.join(recordings, os.path.basename(sonPath)))
+
+    # # Update inFiles to new location
+    # inFiles = [os.path.join(recordings, os.path.basename(f)) for f in inFiles]
 
     for i, f in enumerate(inFiles):
         print(i, ":", f)
 
+    #============================================
     for datFile in inFiles:
-        print(datFile)
         logfilename = 'log_'+time.strftime("%Y-%m-%d_%H%M")+'.txt'
 
-        
-        # try:
-        copied_script_name = os.path.basename(__file__).split('.')[0]+'_'+time.strftime("%Y-%m-%d_%H%M")+'.py'
-        script = os.path.join(scriptDir, os.path.basename(__file__))
-
-        start_time_iter = time.time()
-
-
-        #============================================
-
-        inPath = os.path.dirname(datFile)
-        humFile = datFile
-        recName = os.path.basename(humFile).split('.')[0]
-
-        recName = prefix + recName + suffix
-        projDir = os.path.join(outDir, recName)
-
-        # =========================================================
-        # Determine project_mode
-        print(project_mode)
-        if project_mode == 0:
-            # Create new project
-            if not os.path.exists(projDir):
-                # os.mkdir(projDir)
-                os.makedirs(projDir)
-            else:
-                projectMode_1_inval()
-
-        elif project_mode == 1:
-            # Overwrite existing project
-            if os.path.exists(projDir):
-                shutil.rmtree(projDir)
-
-            print(projDir)
-            os.makedirs(projDir)        
-
-        elif project_mode == 2:
-            # Update project
-            # Make sure project exists, exit if not.
-            
-            if not os.path.exists(projDir):
-                projectMode_2_inval()
-
-        
-        #============================================
-        # Copy humminbird files to projDir
-        recordDir = os.path.join(projDir, 'recording')
-        if not os.path.exists(recordDir):
-            os.mkdir(recordDir)
-
-        datName = os.path.basename(humFile)
-        datDest = os.path.join(recordDir, datName)
-
-        shutil.copy(datFile, datDest)
-
-        sonPath = humFile.split('.DAT')[0]
-        sonDest = os.path.join(recordDir, os.path.basename(sonPath))
-        
         try:
-            shutil.copytree(sonPath, sonDest)
-        except:
-            pass
+            copied_script_name = os.path.basename(__file__).split('.')[0]+'_'+time.strftime("%Y-%m-%d_%H%M")+'.py'
+            script = os.path.abspath(__file__)
 
-        humFile = datDest
-        sonPath = sonDest
+            start_time_iter = time.time()  
 
-        # Only need port and star
-        # sonFiles = glob(sonPath+os.sep+'B002.SON') + glob(sonPath+os.sep+'B003.SON')
-        sonFiles = ['B002', 'B003']
-        
+            inPath = os.path.dirname(datFile)
+            inFile = datFile
+            recName = '.'.join(os.path.basename(inFile).split('.')[:-1])
 
-        # =========================================================
-        # For logging the console output
+            try:
+                sonPath = inFile.split('.DAT')[0]
+                sonFiles = sorted(glob(sonPath+os.sep+'*.SON'))
+                # Remove sonfiles that are not port or starboard
+                sonFiles = [s for s in sonFiles if os.path.basename(s) in ['B002.SON', 'B003.SON']]
+            except:
+                sonFiles = ''
 
-        logdir = os.path.join(projDir, 'logs')
-        if not os.path.exists(logdir):
-            os.makedirs(logdir)
+            if batch:
+                recName = values['prefix'] + recName + values['suffix']
 
-        logfilename = os.path.join(logdir, logfilename)
+                projDir = os.path.join(outDir, recName)
 
-        sys.stdout = Logger(logfilename)
+            else:
+                projDir = os.path.join(os.path.normpath(values['proj']), values['projName'])
 
-        # print('\n\n', '***User Parameters***')
-        # for k,v in params.items():
-        #     print("| {:<20s} : {:<10s} |".format(k, str(v)))
+            #============================================
 
-        #============================================
+            # =========================================================
+            # Determine project_mode
+            project_mode = int(values['project_mode'])
 
-        params = {
-            'nchunk': nchunk,
-            'project_mode': project_mode,
-            # 'aoi': aoi,
-            'cropRange': cropRange,
-            'rect_wcp': rect_wcp,
-            # 'x_offset':float(values['x_offset']),
-            # 'y_offset':float(values['y_offset']),
-            'x_offset':0,
-            'y_offset':0,
-        }
+            print(project_mode)
+            if project_mode == 0:
+                # Create new project
+                if not os.path.exists(projDir):
+                    os.mkdir(projDir)
+                else:
+                    projectMode_1_inval()
 
-        globals().update(params)
+            elif project_mode == 1:
+                # Overwrite existing project
+                if os.path.exists(projDir):
+                    shutil.rmtree(projDir)
 
-        #============================================
-        # Add ofther params
-        params['sonFiles'] = sonFiles
-        params['logfilename'] = logfilename
-        params['script'] = [script, copied_script_name]
-        params['projDir'] = projDir
-        params['inFile'] = humFile
-        params['egn'] = egn
-        params['egn_stretch'] = egn_stretch
-        params['moving_window'] = moving_window
-        params['window_stride'] = window_stride
-        params['wcp'] = True
-        params['rectMethod'] = rectMethod
+                os.mkdir(projDir)        
 
-        if time_table:
-            time_table = filter_time_csv
-        else:
-            time_table = False
+            elif project_mode == 2:
+                # Update project
+                # Make sure project exists, exit if not.
+                
+                if not os.path.exists(projDir):
+                    projectMode_2_inval()
 
-        params['time_table'] = time_table
+            # =========================================================
+            # For logging the console output
 
-        #============================================
+            logdir = os.path.join(projDir, 'logs')
+            if not os.path.exists(logdir):
+                os.makedirs(logdir)
 
-        print('\n\n', '***User Parameters***')
-        for k,v in params.items():
-            print("| {:<20s} : {:<10s} |".format(k, str(v)))
+            logfilename = os.path.join(logdir, logfilename)
+
+            sys.stdout = Logger(logfilename)
+
+            # =========================================================
+            # Copy datFile to project directory
+            outDatDir = os.path.join(projDir, 'recordings')
+            if not os.path.exists(outDatDir):
+                os.mkdir(outDatDir)
+
+            outDatFile = os.path.join(outDatDir, os.path.basename(datFile))
+
+            if not os.path.exists(outDatFile):
+                shutil.copy(datFile, outDatFile)
+
+                if datFile.endswith('.DAT'):
+                    sonPath = datFile.split('.DAT')[0]
+                    outSonPath = os.path.join(outDatDir, os.path.basename(sonPath))
+                    shutil.copytree(sonPath, outSonPath)
+
+            inFile = outDatFile
+
+            #============================================
+            # Parameters
+
+            params = {
+                'sonFiles': sonFiles,
+                'logfilename': logfilename,
+                'script': [script, copied_script_name],
+                'projDir': projDir,
+                'inFile': inFile,
+                'project_mode':int(values['project_mode']),
+                'nchunk': int(values['nchunk']),
+                'aoi': values['aoi'],
+                'cropRange': float(values['cropRange']),
+                'threadCnt':0.5,
+                'aoi':aoi,
+                'max_heading_deviation':float(values['max_heading_deviation']),
+                'max_heading_distance':float(values['max_heading_distance']),
+                'min_speed':float(values['min_speed']),
+                'max_speed':float(values['max_speed']),
+                'time_table':time_table,
+                # 'rect_wcp': values['rect_wcp'],
+                'x_offset':float(values['x_offset']),
+                'y_offset':float(values['y_offset']),
+                'moving_window': bool(values['moving_window']),
+                'window_stride': float(values['window_stride']),
+                'wcp':True,
+                'rectMethod':rectMethod
+            }
+
+            #============================================
+
+            print('\n\n', '***User Parameters***')
+            for k,v in params.items():
+                print("| {:<20s} : {:<10s} |".format(k, str(v)))
 
 
-        # try:
+            # try:
 
-        # print('sonPath',sonPath)
-        # print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
-        # print('+++++++++++++++++++++++++++++++++++++++++++')
-        # print('***** Working On *****')
-        # print(humFile)
-        # print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
+            print('sonPath',sonPath)
+            print('\n\n\n+++++++++++++++++++++++++++++++++++++++++++')
+            print('+++++++++++++++++++++++++++++++++++++++++++')
+            print('***** Working On *****')
+            print(inFile)
+            print('Start Time: ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
 
-        # print('\n===========================================')
-        # print('===========================================')
-        # print('***** READING *****')
-        # read_master_func(**params)
+            print('\n===========================================')
+            print('===========================================')
+            print('***** READING *****')
+            read_master_func(**params)
 
-        # print('\n===========================================')
-        # print('===========================================')
-        # print('***** RECTIFYING *****')
-        # rectify_master_func(**params)
+            print('\n===========================================')
+            print('===========================================')
+            print('***** RECTIFYING *****')
+            rectify_master_func(**params)
 
-        params['rf_model'] = rf_model
-        params['gpxToHum'] = gpxToHum
-        params['sdDir'] = inDir
-        params['confidence'] = confidence
-        params['iou_threshold'] = iou_threshold
+            params['rf_model'] = values['rf_model']
+            params['gpxToHum'] = values['gpxToHum']
+            params['sdDir'] = inDir
+            params['confidence'] = values['confidence']
+            params['iou_threshold'] = values['iou_threshold']
 
-        # Unique Waypoint name
-        recording = os.path.basename(humFile)
-        recording = recording.split('.')[0]
-        recording = int(recording[3:])
-        # wptPrefix = values['wptPrefix']
-        wptPrefix = 'wpt'
-        wptPrefix = '{}_{}'.format(wptPrefix, recording)
-        params['wptPrefix'] = wptPrefix
-        params['stride'] = int(window_stride*nchunk)
+            # Unique Waypoint name
+            recording = os.path.basename(inFile)
+            recording = recording.split('.')[0]
+            recording = int(recording[3:])
+            # wptPrefix = values['wptPrefix']
+            wptPrefix = 'wpt'
+            wptPrefix = '{}_{}'.format(wptPrefix, recording)
+            params['wptPrefix'] = wptPrefix
+            window_stride = float(values['window_stride'])
+            params['stride'] = int(window_stride*nchunk)
+                
 
-        if export_vid and not export_image:
-            export_image = True
-            params['delete_image'] = True
+            params['export_vid'] = values['export_vid']
+            params['export_image'] = values['export_image']
+            params['inference_track'] = values['inference_track']
+            params['tracker_cnt'] = ((nchunk / (window_stride*nchunk)) * values['track_cnt_thresh'])
+
+            if params['export_vid'] and not params['export_image']:
+                params['export_image'] = True
+                params['delete_image'] = True
+
+            print('\n\n', '***User Detection Parameters***')
+            for k,v in params.items():
+                print("| {:<20s} : {:<10s} |".format(k, str(v)))
             
 
-        params['export_vid'] = export_vid
-        params['export_image'] = export_image
-        params['inference_track'] = inference_track
-        params['tracker_cnt'] = tracker_cnt
+            print('\n===========================================')
+            print('===========================================')
+            print('***** DETECTING CRAB POTS *****')
+            crabpots_master_func(**params)
 
-        print('\n\n', '***User Detection Parameters***')
-        for k,v in params.items():
-            print("| {:<20s} : {:<10s} |".format(k, str(v)))
-        
+            print("\n\nTotal Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time_iter, ndigits=0)))
 
-        print('\n===========================================')
-        print('===========================================')
-        print('***** DETECTING CRAB POTS *****')
-        crabpots_master_func(**params)
-
-        print("\n\nTotal Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time_iter, ndigits=0)))
-
-        sys.stdout.log.close()
-            
-        # except Exception as Argument:
-        #     unableToProcessError(logfilename)
-        #     print('\n\nCould not process:', datFile)
+            sys.stdout.log.close()
+                
+        except Exception as Argument:
+            unableToProcessError(logfilename)
+            print('\n\nCould not process:', datFile)
 
         sys.stdout = oldOutput
 
@@ -500,7 +686,7 @@ def detect_main():
     print('\n===========================================')
     print('===========================================')
     print('***** EXPORTING FINAL RESULTS *****')
-    export_final_results(outDir, projName)
+    export_final_results(outDir, os.path.basename(outDir))
 
     print("\n\nGrand Total Processing Time: ",datetime.timedelta(seconds = round(time.time() - start_time, ndigits=0)))
 

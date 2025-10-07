@@ -311,6 +311,10 @@ def export_final_results(outDir: str,
 
     gdf.to_file(outShp)
 
+    #################
+    # Raw CSV Results
+    gdf.to_csv(outShp.replace('.shp', '.csv'), index=False)
+
     #####
     # GPX
     outGpx = outShp.replace('.shp', '.gpx')
@@ -318,10 +322,6 @@ def export_final_results(outDir: str,
     gdf = gdf.rename(columns={'tracker_id': 'name'})
     gdf = gdf[['name', 'geometry']]
     gdf.to_file(outGpx, 'GPX')
-
-    #################
-    # Raw CSV Results
-    gdf.to_csv(outShp.replace('.shp', '.csv'), index=False)
 
 
     return

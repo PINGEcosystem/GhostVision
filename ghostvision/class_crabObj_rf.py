@@ -5,21 +5,11 @@ Copyright (c) 2025 Cameron S. Bodine
 
 import os, sys
 
-# from pingmapper.funcs_common import *
 from pingmapper.class_rectObj import rectObj
-# from inference_folder import do_inference
-# from inference_tracker import do_tracker_inference
-# from ghostvisionRF.inference_folder import do_inference
-# from ghostvisionRF.inference_tracker import do_tracker_inference
 import ast
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-
-# # Debug
-# detectPath = os.path.normpath('../PINGDetect')
-# detectPath = os.path.abspath(detectPath)
-# sys.path.insert(0, detectPath)
 
 from pingdetect.rf_infer_folder import do_inference
 from pingdetect.rf_infer_tracker import do_tracker_inference
