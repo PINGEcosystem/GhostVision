@@ -21,6 +21,7 @@ dependencies:
       - pingmapper
       - pingwizard
       - pinginstaller
+      - pingdetect
       - doodleverse_utils
       - psutil
       - transformers

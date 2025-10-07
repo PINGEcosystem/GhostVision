@@ -323,5 +323,4 @@ def export_final_results(outDir: str,
     gdf = gdf[['name', 'geometry']]
     gdf.to_file(outGpx, 'GPX')
 
-
     return
