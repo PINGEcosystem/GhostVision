@@ -28,7 +28,6 @@ dependencies:
       - tensorflow
       - inference
       - supervision
-      - trackers[cpu]
       - trackers[deepsort]
       - opencv-python
       - rsa
