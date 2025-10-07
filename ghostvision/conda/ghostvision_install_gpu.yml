@@ -21,6 +21,7 @@ dependencies:
       - pingwizard
       - pinginstaller
       - pingdetect
+      - ghostvision
       - doodleverse_utils
       - psutil
       - tensorflow

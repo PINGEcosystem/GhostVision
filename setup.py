@@ -4,10 +4,10 @@ from pathlib import Path
 DESCRIPTION = 'Near-real time detection of derelict (ghost) crab pots with side-scan sonar.'
 LONG_DESCRIPTION = Path('README.md').read_text()
 
-exec(open('pingmapper/version.py').read())
+exec(open('ghostvision/version.py').read())
 
 setup(
-    name="pingmapper",
+    name="ghostvision",
     version=__version__,
     author="Cameron Bodine",
     author_email="bodine.cs@gmail.email",
