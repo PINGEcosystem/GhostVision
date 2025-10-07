@@ -15,7 +15,6 @@ dependencies:
   - matplotlib
   - rasterio
   - h5py
-  # put heavyweight binary deps in conda; keep the rest for pip
   - pip:
       - pingverter
       - pingmapper
