@@ -16,18 +16,15 @@ dependencies:
   - rasterio
   - h5py
   - pip:
+      - psutil
+      - inference
+      - supervision
+      - trackers[deepsort]
+      - opencv-python
       - pingverter
       - pingmapper
       - pingwizard
       - pinginstaller
       - pingdetect
       - ghostvision
-      - doodleverse_utils
-      - psutil
-      - transformers
-      - tensorflow
-      - inference
-      - supervision
-      - trackers[deepsort]
-      - opencv-python
       - rsa
