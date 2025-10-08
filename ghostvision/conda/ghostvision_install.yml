@@ -6,7 +6,7 @@ dependencies:
   - pip
   - git
   - gdal
-  - numpy
+  - numpy<2
   - pandas
   - geopandas
   - pyproj
@@ -16,7 +16,8 @@ dependencies:
   - rasterio
   - h5py
   - pip:
-      - psutil
+      - torch<2.4
+      - torchvision<0.19
       - inference
       - supervision
       - trackers[deepsort]
