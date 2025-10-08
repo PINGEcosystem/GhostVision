@@ -592,6 +592,12 @@ def detect_main(batch: bool=True):
 
 def get_avail_models():
 
+    # Get all available models from GitHub
+    if not os.path.exists(rf_model_dir):
+        os.makedirs(rf_model_dir)
+
+    download_all_models(rf_model_dir)
+
     # Get projects in directory
     projects = os.listdir(rf_model_dir)
 
@@ -605,6 +611,37 @@ def get_avail_models():
             avail_models.append('{}/{}'.format(proj, v))
 
     return avail_models
+
+def download_all_models(rf_model_dir):
+
+    import requests, zipfile
+
+    # Known models
+    known_models = {
+        'allcrabpotsources/11': 'allcrabpotsources_v11.zip'
+    }
+    
+    url = r'https://github.com/PINGEcosystem/GhostVision/releases/download/models'
+
+    for k, v in known_models.items():
+        model_dir = os.path.join(rf_model_dir, k)
+        if not os.path.exists(model_dir):
+
+            print('Downloading model: {}'.format(k))
+            r = requests.get('{}/{}'.format(url, v), stream=True)
+            zip_path = os.path.join(rf_model_dir, v)
+
+            with open(zip_path, 'wb') as f:
+                f.write(r.content)
+
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(rf_model_dir)
+
+            os.remove(zip_path)
+            print('Model downloaded and extracted to: {}'.format(model_dir))
+
+    return
+
 
 if __name__ == "__main__":
     detect_main()

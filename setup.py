@@ -17,7 +17,7 @@ setup(
     packages=find_packages(),
     data_files=[("ghostvision_config", ["ghostvision/default_params.json"])],
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
@@ -42,7 +42,7 @@ setup(
         "limnology",
         "object-detection",],
     python_requires=">=3.6",
-    install_requires=['pinginstaller', 'pingwizard', 'pingverter', 'pingmapper'],
+    install_requires=['pinginstaller', 'pingwizard', 'pingverter', 'pingmapper', 'pingdetect'],
     project_urls={
         "Issues": "https://github.com/PINGEcosystem/GhostVision/issues",
         "GitHub":"https://github.com/PINGEcosystem/GhostVision",

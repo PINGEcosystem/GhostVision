@@ -35,7 +35,7 @@ if __name__ == "__main__":
         to_do = 'detect'
         main(to_do)
 
-    elif sys.argv[1] == "rf_download":
+    elif sys.argv[1] == "rf-download":
         from pingdetect.rf_utils import get_model
 
         get_model(GV_UTILS_DIR)

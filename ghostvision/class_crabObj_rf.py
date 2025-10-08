@@ -5,7 +5,11 @@ Copyright (c) 2025 Cameron S. Bodine
 
 import os, sys
 
+# # For debug
+# from class_rectObj import rectObj
+
 from pingmapper.class_rectObj import rectObj
+
 import ast
 import numpy as np
 import pandas as pd
