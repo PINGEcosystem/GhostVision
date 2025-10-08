@@ -6,7 +6,7 @@ dependencies:
   - pip
   - git
   - gdal
-  - numpy<2
+  - numpy
   - pandas
   - geopandas
   - pyproj
