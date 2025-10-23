@@ -541,12 +541,13 @@ def detect_main(batch: bool=True):
             params['iou_threshold'] = values['iou_threshold']
 
             # Unique Waypoint name
-            recording = os.path.basename(inFile)
-            recording = recording.split('.')[0]
-            recording = int(recording[3:])
+            # recording = os.path.basename(inFile)
+            # recording = recording.split('.')[0]
+            # recording = int(recording[3:])
             # wptPrefix = values['wptPrefix']
-            wptPrefix = 'wpt'
-            wptPrefix = '{}_{}'.format(wptPrefix, recording)
+            # wptPrefix = 'wpt'
+            # wptPrefix = '{}_{}'.format(wptPrefix, recording)
+            wptPrefix = values['wptPrefix']
             params['wptPrefix'] = wptPrefix
             window_stride = float(values['window_stride'])
             params['stride'] = int(window_stride*nchunk)
