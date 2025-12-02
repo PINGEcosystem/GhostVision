@@ -95,7 +95,7 @@ The model will be downloaded and available to use.
 
 *NOTE: The contents of this repository are those of the author(s) and do not necessarily represent the views of the individuals and organizations specifically mentioned here.*
 
-**Development Team:** [Cameron Bodine](https://github.com/CameronBodine), [Art Trembanis](https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/arthur-trembanis/), Kleio Baxevani, Onur Bagoren, Olivia Hines, Jared Wierzbicki, Ophelia Christoph, Catherine Hughes, Julia Greco.
+**Development Team:** [Cameron Bodine](https://github.com/CameronBodine), [Art Trembanis](https://www.udel.edu/academics/colleges/ceoe/departments/smsp/faculty/arthur-trembanis/), Kleio Baxevani, Naveed Abbasi, Onur Bagoren, Olivia Hines, Jared Wierzbicki, Ophelia Christoph, Catherine Hughes, Julia Greco.
 
 - [Coastal Sediments, Hydrodynamics and Engineering Lab (CSHEL)](https://sites.udel.edu/ceoe-art/), [College of Earth, Ocean, & Environment (CEOE)](https://www.udel.edu/ceoe/), [University of Delaware](https://www.udel.edu/)
 
