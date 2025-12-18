@@ -257,6 +257,9 @@ def crabpots_master_func(logfilename = '',
                 cog = True
             detectDF = calcDetectLoc(beamName, detectDF, cog=cog)
 
+            # Add projName column
+            detectDF['projName'] = projName
+
             # Save all preds to csv
             detectDF.to_csv(detect_csv, index=False)
 
@@ -297,14 +300,29 @@ def export_final_results(outDir: str,
     # Shapefile
 
     # Find all the shapefiles
-    shps = glob(os.path.join(outDir, '**', '*.shp'), recursive=True)
-    
-    allShps = []
-    for s in shps:
-        s = gpd.read_file(s)
-        allShps.append(s)
+    # shps = glob(os.path.join(outDir, '**', '*.shp'), recursive=True)
+    shps = glob(os.path.join(outDir, '**', '*_results', '*.shp'), recursive=True)
 
-    gdf = gpd.GeoDataFrame(pd.concat(allShps, ignore_index=True))
+    if len(shps) == 0:
+        # Nothing to export
+        return
+
+    # Harmonize CRS to WGS84 (EPSG:4326) for consistent merge and GPX output
+    common_crs = 'EPSG:4326'
+    allShps = []
+    for shp_path in shps:
+        df = gpd.read_file(shp_path)
+        # Reproject if CRS is defined and different
+        if df.crs is not None:
+            try:
+                df = df.to_crs(common_crs)
+            except Exception:
+                # If reprojection fails, keep original to avoid hard crash
+                pass
+        allShps.append(df)
+
+    # Concatenate with a defined CRS
+    gdf = gpd.GeoDataFrame(pd.concat(allShps, ignore_index=True), crs=common_crs)
 
     outShp = '{}_GhostVisionDetects.shp'.format(projName)
     outShp = os.path.join(out, outShp)
@@ -319,8 +337,18 @@ def export_final_results(outDir: str,
     # GPX
     outGpx = outShp.replace('.shp', '.gpx')
 
-    gdf = gdf.rename(columns={'tracker_id': 'name'})
+    # Ensure GPX has a 'name' column
+    if 'tracker_id' in gdf.columns:
+        gdf = gdf.rename(columns={'tracker_id': 'name'})
+    if 'name' not in gdf.columns:
+        gdf['name'] = ''
     gdf = gdf[['name', 'geometry']]
+    # GPX requires WGS84
+    if gdf.crs is None or str(gdf.crs).upper() != 'EPSG:4326':
+        try:
+            gdf = gdf.to_crs('EPSG:4326')
+        except Exception:
+            pass
     gdf.to_file(outGpx, 'GPX')
 
     return
