@@ -47,7 +47,7 @@ class crabObj(rectObj):
         return
     
     #=======================================================================
-    def _detectTrackCrabPots(self, rf_model: str, in_vid: str, confidence: float=0.5, iou_threshold: float=0.5, stride: float=0.2, nchunk: int=500):
+    def _detectTrackCrabPots(self, rf_model: str, in_vids: list, confidence: float=0.5, iou_threshold: float=0.5, stride: float=0.2, nchunk: int=500):
         '''
         '''
 
@@ -57,7 +57,7 @@ class crabObj(rectObj):
         wcp_dir = os.path.join(self.outDir, wcp_dir_name)
 
         # Do inference
-        do_tracker_inference(rf_model=rf_model, in_vid=in_vid, confidence=confidence, iou_threshold=iou_threshold, stride=stride, nchunk=nchunk)
+        do_tracker_inference(rf_model=rf_model, in_vids=in_vids, confidence=confidence, iou_threshold=iou_threshold, stride=stride, nchunk=nchunk, debug_export_frames=False)
 
         return
     

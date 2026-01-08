@@ -19,13 +19,9 @@ import json
 from .version import __version__
 
 # # Debug
-# pingPath = os.path.normpath('../PINGMapper/pingmapper')
+# pingPath = os.path.normpath('../PINGMapper')
 # pingPath = os.path.abspath(pingPath)
 # sys.path.insert(0, pingPath)
-# sys.path.insert(0, 'src')
-# from funcs_common import *
-# from main_readFiles import read_master_func
-# from main_rectify import rectify_master_func
 
 from pingmapper.funcs_common import *
 from pingmapper.main_readFiles import read_master_func
@@ -389,13 +385,17 @@ def detect_main(batch: bool=True):
     
     
     
-    # inFiles = inFiles[:2] # for testing
+    # inFiles = inFiles[:1] # for testing
 
 
 
 
     for i, f in enumerate(inFiles):
         print(i, ":", f)
+
+    # Create output directory if it doesn't exist
+    if not os.path.exists(outDir):
+        os.makedirs(outDir)
 
     #============================================
     for datFile in inFiles:
@@ -505,8 +505,6 @@ def detect_main(batch: bool=True):
                 # 'rect_wcp': values['rect_wcp'],
                 'x_offset':float(values['x_offset']),
                 'y_offset':float(values['y_offset']),
-                'moving_window': bool(values['moving_window']),
-                'window_stride': float(values['window_stride']),
                 'wcp':True,
                 'rectMethod':rectMethod
             }
@@ -551,11 +549,18 @@ def detect_main(batch: bool=True):
             params['wptPrefix'] = wptPrefix
             window_stride = float(values['window_stride'])
             params['stride'] = int(window_stride*nchunk)
+            params['moving_window'] = bool(values['moving_window'])
+            params['window_stride'] = float(values['window_stride'])
                 
 
             params['export_vid'] = values['export_vid']
             params['export_image'] = values['export_image']
             params['inference_track'] = values['inference_track']
+
+            # Set tracker count threshold
+            tracker_cnt = np.around((nchunk / (window_stride*nchunk)) * values['track_cnt_thresh'], decimals=0)
+            if tracker_cnt < 1:
+                tracker_cnt = 1
             params['tracker_cnt'] = ((nchunk / (window_stride*nchunk)) * values['track_cnt_thresh'])
 
             if params['export_vid'] and not params['export_image']:

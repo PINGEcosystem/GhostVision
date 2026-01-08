@@ -21,6 +21,7 @@ dependencies:
       - pingwizard
       - pinginstaller
       - pingdetect
+      - pingtile
       - ghostvision
       - doodleverse_utils
       - psutil

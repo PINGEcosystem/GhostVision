@@ -27,5 +27,6 @@ dependencies:
       - pingwizard
       - pinginstaller
       - pingdetect
+      - pingtile
       - ghostvision
       - rsa

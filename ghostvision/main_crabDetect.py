@@ -8,6 +8,7 @@ import cv2
 from ghostvision.class_crabObj_rf import crabObj
 
 from joblib import Parallel, delayed, cpu_count
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 from glob import glob
@@ -17,7 +18,12 @@ from glob import glob
 # detectPath = os.path.abspath(detectPath)
 # sys.path.insert(0, detectPath)
 
+# tilePath = os.path.normpath('../PINGTile')
+# tilePath = os.path.abspath(tilePath)
+# sys.path.insert(0, tilePath)    
+
 from pingdetect.detect_spatial import calcDetectLoc, summarizeDetect, calcWpt, calcDetectIdx
+from pingtile.sonogramMovWin import doSonogramMovWin
 
 # Set GHOSTVISION utils dir
 USER_DIR = os.path.expanduser('~')
@@ -165,6 +171,19 @@ def crabpots_master_func(logfilename = '',
         channel = (son.beamName) #ss_port, ss_star, etc.
         projName = os.path.split(son.projDir)[-1]
 
+        ##############################
+        # Generate moving window tiles and videos
+        print('\n\nGenerating Moving Window Tiles and Videos...\n')
+        doSonogramMovWin(inDir=son.outDir,
+                        projName=projName,
+                        channel=channel,
+                        sonMetaFile=son.sonMetaFile,
+                        nchunk=nchunk,
+                        stride=int(window_stride*nchunk),
+                        tileType=['wcp'],
+                        exportVid=True,
+                        threadCnt=threadCnt)
+
         # Without tracking
         if not inference_track:
             print('\n\nNot Tracking Objects...\n')
@@ -202,8 +221,6 @@ def crabpots_master_func(logfilename = '',
         if inference_track:
             print('\n\nTracking Objects...\n')
 
-            detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
-
             print(wcp_dir)
             print(os.path.exists(wcp_dir))
             print('confidence: {}\tiou: {}'.format(confidence, iou_threshold))
@@ -215,39 +232,51 @@ def crabpots_master_func(logfilename = '',
             #     os.makedirs(outDir)
 
             ##################
-            # Create the video
+            # Get generated videos for tracking
+            vid_dir = os.path.join(son.outDir, 'wcp_mw_results')
+            vids = [os.path.join(vid_dir, f) for f in os.listdir(vid_dir) if f.endswith('.mp4') and channel in f]
+            vids.sort()
 
-            # images = [img for img in os.listdir(image_folder) if img.endswith((".png", ".jpg", ".jpeg"))]
-            images = [img for img in os.listdir(wcp_dir) if img.endswith('.jpg') or img.endswith('.png') and channel in img]
-            images.sort()
-
-            vid_path = os.path.join(outDir, '{}_crabpot_detection_{}.mp4'.format(projName, channel))
-
-            frame = cv2.imread(os.path.join(wcp_dir, images[0]))
-            height, width, layers = frame.shape
-
-            video = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (width, height), )
-            for image in images:
-                frame = cv2.imread(os.path.join(wcp_dir, image))
-                video.write(frame)
-
-            video.release()
+            vids.sort()
 
             #######################
-            # Do inference tracking
-            son._detectTrackCrabPots(rf_model=rf_model, in_vid=vid_path, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
+            # Do inference tracking on all videos
+            son._detectTrackCrabPots(rf_model=rf_model, in_vids=vids, confidence=confidence, iou_threshold=iou_threshold, stride=window_stride, nchunk=nchunk)
+
+            # Update detect_csv to the actual output file from tracker
+            # The tracker saves with the name based on the first video
+            detect_csv = os.path.join(vid_dir, os.path.basename(vids[0]).replace('.mp4', '_track_ALL.csv'))
 
 
         ###########################
         # Calculate mapped location
 
+        # print(f"\n[DEBUG] Looking for detect_csv at: {detect_csv}")
+        # print(f"[DEBUG] CSV exists: {os.path.exists(detect_csv)}")
+        
         if os.path.exists(detect_csv):
             # detect_csv = os.path.join(outDir, '{}_crabpot_detection_{}_track_ALL.csv'.format(projName, channel))
             detectDF = pd.read_csv(detect_csv)
+            # print(f"\n[DEBUG] Total detections loaded from {os.path.basename(detect_csv)}: {len(detectDF)}")
+            # print(f"[DEBUG] Transect column exists: {'transect' in detectDF.columns}")
+            # if 'transect' in detectDF.columns:
+            #     print(f"[DEBUG] Unique transects: {sorted(detectDF['transect'].unique())}")
+            #     print(f"[DEBUG] Transect value counts:\n{detectDF['transect'].value_counts().sort_index()}")
 
             # Calculate ping index to get smoothed trackline data
             smthTrkFile = son.smthTrkFile
-            detectDF = calcDetectIdx(smthTrkFile, detectDF, stride, son.nchunk)
+            
+            # Spatial indexing using stride-only mapping
+            # Iterate over each transect
+            finalDFS = []
+            for transect_id in detectDF['transect'].unique():
+                transectDF = detectDF[detectDF['transect'] == transect_id].copy()
+                # print(f"[DEBUG] Processing transect {transect_id}: {len(transectDF)} detections")
+                transectDF = calcDetectIdx(smthTrkFile, transectDF, stride, son.nchunk, transect_id=transect_id)
+                # print(f"[DEBUG] After calcDetectIdx for transect {transect_id}: {len(transectDF)} detections")
+                finalDFS.append(transectDF)
+            detectDF = pd.concat(finalDFS, ignore_index=True)
+            # print(f"[DEBUG] After concatenating all transects: {len(detectDF)} detections")
 
             # Calculate target location
             beamName = son.beamName
@@ -256,23 +285,35 @@ def crabpots_master_func(logfilename = '',
             else:
                 cog = True
             detectDF = calcDetectLoc(beamName, detectDF, cog=cog)
+            # print(f"[DEBUG] After calcDetectLoc: {len(detectDF)} detections")
 
             # Add projName column
             detectDF['projName'] = projName
 
             # Save all preds to csv
             detectDF.to_csv(detect_csv, index=False)
+            # print(f"[DEBUG] Saved {len(detectDF)} detections to CSV")
 
             if inference_track:
                 # Summarize by target_id
+                detectDF_before_summary = detectDF.copy()
                 detectDF = summarizeDetect(detectDF)
+                # print(f"[DEBUG] After summarizeDetect: {len(detectDF)} detections (was {len(detectDF_before_summary)})")
 
+                detectDF_before_threshold = detectDF.copy()
                 detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
-
+                # print(f"[DEBUG] After pred_cnt threshold (>= {tracker_cnt}): {len(detectDF)} detections (was {len(detectDF_before_threshold)})")
             # Create wpt shapefile and GPX
             if len(detectDF)>0:
                 projDir = son.projDir
-                calcWpt(detectDF, outDir, projDir)
+                # print(f"\n[DEBUG] Creating shapefile/GPX with {len(detectDF)} detections")
+                # print(f"[DEBUG] Output directory: {outDir}")
+                # print(f"[DEBUG] Project directory: {projDir}")
+                # Use the same confidence threshold for waypoint export to keep behavior consistent
+                calcWpt(detectDF, outDir, projDir, threshold=confidence)
+            else:
+                # print(f"\n[DEBUG] No detections to export after filtering (DataFrame is empty)")
+                pass
                 
     # Delete model
     tmp_model_dir = r'/tmp/cache'
@@ -281,7 +322,6 @@ def crabpots_master_func(logfilename = '',
     if os.path.exists(tmp_model_dir):
         import shutil
         shutil.rmtree(tmp_model_dir)
-
 
     return
 
