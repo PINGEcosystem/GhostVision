@@ -30,6 +30,5 @@ dependencies:
       - transformers
       - inference-gpu
       - supervision
-      - trackers[deepsort]
       - opencv-python
       - rsa
