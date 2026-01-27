@@ -238,8 +238,9 @@ def detect_main(batch: bool=True):
 
     # Model Selection #
     avail_models = get_avail_models()
+    avail_models_aliases = list(avail_models.keys())
     model_label = sg.Text("Model Selection:", size=(20, 1), font=("Helvetica", 12), justification="left")
-    model_list = sg.Combo(avail_models, key='rf_model', default_value=default_params['rf_model'])
+    model_list = sg.Combo(avail_models_aliases, key='rf_model', default_value=default_params['rf_model'])
 
     
     # Confidence & IoU #
@@ -532,7 +533,9 @@ def detect_main(batch: bool=True):
             print('***** RECTIFYING *****')
             rectify_master_func(**params)
 
-            params['rf_model'] = values['rf_model']
+            model_alias = values['rf_model']
+            rf_model = avail_models[model_alias]
+            params['rf_model'] = rf_model
             params['gpxToHum'] = values['gpxToHum']
             params['sdDir'] = inDir
             params['confidence'] = values['confidence']
@@ -602,19 +605,21 @@ def get_avail_models():
     if not os.path.exists(rf_model_dir):
         os.makedirs(rf_model_dir)
 
-    download_all_models(rf_model_dir)
+    # download_all_models(rf_model_dir)
 
-    # Get projects in directory
-    projects = os.listdir(rf_model_dir)
+    # # Get projects in directory
+    # projects = os.listdir(rf_model_dir)
 
     
-    # Find all folders and subfolders in rf_model_dir
-    avail_models = []
-    for proj in projects:
-        versions = os.listdir(os.path.join(rf_model_dir, proj))
+    # # Find all folders and subfolders in rf_model_dir
+    # avail_models = []
+    # for proj in projects:
+    #     versions = os.listdir(os.path.join(rf_model_dir, proj))
 
-        for v in versions:
-            avail_models.append('{}/{}'.format(proj, v))
+    #     for v in versions:
+    #         avail_models.append('{}/{}'.format(proj, v))
+
+    avail_models = download_all_models(rf_model_dir)
 
     return avail_models
 
@@ -622,20 +627,26 @@ def download_all_models(rf_model_dir):
 
     import requests, zipfile
 
+    avail_models = {}
+
     # Known models
     known_models = {
-        'allcrabpotsources/11': 'allcrabpotsources_v11.zip'
+        'ghostvision-models/1': ['ghostvision_rf-detr-v1.zip', 'rf-detr_v1'],
+        'ghostvision-models/2': ['ghostvision_yolo26-v1.zip', 'yolo26_v1'],
+        'ghostvision-models/5': ['ghostvision_yolo12-v1.zip', 'yolo12_v1'],
     }
     
     url = r'https://github.com/PINGEcosystem/GhostVision/releases/download/models'
 
     for k, v in known_models.items():
         model_dir = os.path.join(rf_model_dir, k)
+        model_zip_name = v[0]
+        model_alias = v[1]
         if not os.path.exists(model_dir):
 
             print('Downloading model: {}'.format(k))
-            r = requests.get('{}/{}'.format(url, v), stream=True)
-            zip_path = os.path.join(rf_model_dir, v)
+            r = requests.get('{}/{}'.format(url, model_zip_name), stream=True)
+            zip_path = os.path.join(rf_model_dir, model_zip_name)
 
             with open(zip_path, 'wb') as f:
                 f.write(r.content)
@@ -645,8 +656,10 @@ def download_all_models(rf_model_dir):
 
             os.remove(zip_path)
             print('Model downloaded and extracted to: {}'.format(model_dir))
+            
+        avail_models[model_alias] = k
 
-    return
+    return avail_models
 
 
 if __name__ == "__main__":
