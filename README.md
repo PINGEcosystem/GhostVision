@@ -15,6 +15,16 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 
 `GhostVision` is an open-source Python interface for automatically detecting and mapping ghost (derelict) crab pots from side-scan sonar imagery. `GhostVision` leverages [`Yolo`](https://docs.ultralytics.com/) models trained with [`Roboflow`](https://roboflow.com/). Detections are then georeferenced with [`PINGMapper`](https://github.com/CameronBodine/PINGMapper).
 
+## Published Documentation
+### Journal Article
+*In Preparation*
+
+### Models
+*In Preparation*
+
+### Model Dataset
+[![Dataset on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg)](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection)
+
 ## Installation
 
 ### GPU (Fast Inference)
