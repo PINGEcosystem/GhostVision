@@ -11,25 +11,26 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 
 ![ezgif com-crop](https://github.com/user-attachments/assets/ece0602b-1edf-4a2a-88ec-9301b2483378)
 
-## Overview
+## 📡 Overview
 
 `GhostVision` is an open-source Python interface for automatically detecting and mapping ghost (derelict) crab pots from side-scan sonar imagery. `GhostVision` currently supports multiple packaged object-detection models, including YOLO- and RF-DETR-based exports trained with [`Roboflow`](https://roboflow.com/). Detections are then georeferenced with [`PINGMapper`](https://github.com/CameronBodine/PINGMapper).
 
-## Published Documentation
-### Journal Article
+## 📜 Published Documentation
+### 📄 Journal Article
 *In Preparation*
 
-### Models
+### 🤖 Models
 *In Preparation*
 - GV-RF-DETR [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-rf-detr)
+- GV-YOLO12 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-yolo12)
 - GV-YOLO26 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-yolo26)
 
-### Model Dataset
+### 🗂️ Model Dataset
 [![Dataset on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg)](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection-ds)
 
-## Installation
+## ⚙️ Installation
 
-### GPU (Fast Inference)
+### 🚀 GPU (Fast Inference)
 
 `GhostVision` is optimized for running inference (predictions) on the GPU. The processing environment is installed with `conda`. Any flavor of `conda` will do, but we recommend [`Miniforge`](https://conda-forge.org/download/). Follow the instructions below based on your OS.
 
@@ -61,7 +62,7 @@ Windows does not natively support inference on the GPU. A utility called [WSL](h
     python -m pinginstaller ghostvision-gpu
     ```
 
-### CPU (Slow Inference; Experimental)
+### 🐢 CPU (Slow Inference; Experimental)
 An experimental version of `GhostVision` is available to test inference speeds on the CPU. This has been tested on Windows 11 only.
 
 1. Install [`Miniforge`](https://conda-forge.org/download/).
@@ -75,7 +76,7 @@ An experimental version of `GhostVision` is available to test inference speeds o
     python -m pinginstaller ghostvision
     ```
 
-## Usage
+## 🚀 Usage
 
 1. Open the appropriate command prompt based on your installation above.
 2. Launch `GhostVision`:
@@ -87,7 +88,7 @@ An experimental version of `GhostVision` is available to test inference speeds o
 
 Bundled release models are downloaded automatically into the local `~/.ghostvision/models` cache the first time they are needed. The current packaged aliases exposed by the app include `rf-detr_v1`, `yolo26_v1`, and `yolo12_v1`.
 
-## Download Custom `Roboflow` Object Detection Model
+## 📦 Download Custom `Roboflow` Object Detection Model
 
 `GhostVision` includes packaged object detection models designed to detect crab pots from side-scan sonar imagery. If you want to use your own compatible `Roboflow` export instead, you can download a custom model with the included utility.
 
@@ -103,7 +104,14 @@ Bundled release models are downloaded automatically into the local `~/.ghostvisi
 
 The model will be downloaded and available to use.
 
-## Acknowledgments
+## 🔗 Related Resources
+
+- Dataset: [PINGEcosystem/sss-crab-pot-detection-ds](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection-ds)
+- RF-DETR model card: [PINGEcosystem/gv-rf-detr](https://huggingface.co/PINGEcosystem/gv-rf-detr)
+- YOLO12 model card: [PINGEcosystem/gv-yolo12](https://huggingface.co/PINGEcosystem/gv-yolo12)
+- YOLO26 model card: [PINGEcosystem/gv-yolo26](https://huggingface.co/PINGEcosystem/gv-yolo26)
+
+## 🙌 Acknowledgments
 
 `GhostVision` has been made possible through mentorship, partnerships, financial support, open-source software, manuscripts, and documentation linked below.
 
