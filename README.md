@@ -21,7 +21,7 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 
 ### Models
 *In Preparation*
-[![RF-DETR model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-rf-detr)
+- GV-RF-DETR [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-rf-detr)
 
 ### Model Dataset
 [![Dataset on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg)](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection)
