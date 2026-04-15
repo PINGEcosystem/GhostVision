@@ -13,7 +13,7 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 
 ## Overview
 
-`GhostVision` is an open-source Python interface for automatically detecting and mapping ghost (derelict) crab pots from side-scan sonar imagery. `GhostVision` leverages [`Yolo`](https://docs.ultralytics.com/) models trained with [`Roboflow`](https://roboflow.com/). Detections are then georeferenced with [`PINGMapper`](https://github.com/CameronBodine/PINGMapper).
+`GhostVision` is an open-source Python interface for automatically detecting and mapping ghost (derelict) crab pots from side-scan sonar imagery. `GhostVision` currently supports multiple packaged object-detection models, including YOLO- and RF-DETR-based exports trained with [`Roboflow`](https://roboflow.com/). Detections are then georeferenced with [`PINGMapper`](https://github.com/CameronBodine/PINGMapper).
 
 ## Published Documentation
 ### Journal Article
@@ -22,9 +22,10 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 ### Models
 *In Preparation*
 - GV-RF-DETR [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-rf-detr)
+- GV-YOLO26 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-yolo26)
 
 ### Model Dataset
-[![Dataset on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg)](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection)
+[![Dataset on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md.svg)](https://huggingface.co/datasets/PINGEcosystem/sss-crab-pot-detection-ds)
 
 ## Installation
 
@@ -82,11 +83,13 @@ An experimental version of `GhostVision` is available to test inference speeds o
     conda activate ghostvision
     python -m ghostvision
     ```
-3. Select desired parameters and click `Submit`.
+3. Select your desired model and processing parameters, then click `Submit`.
+
+Bundled release models are downloaded automatically into the local `~/.ghostvision/models` cache the first time they are needed. The current packaged aliases exposed by the app include `rf-detr_v1`, `yolo26_v1`, and `yolo12_v1`.
 
 ## Download Custom `Roboflow` Object Detection Model
 
-`GhostVision` includes `Roboflow` object detection models designed to detect crab pots from side-scan sonar imagery. You can train and use your own object detection model by downloading the model from `Roboflow` with the included utility.
+`GhostVision` includes packaged object detection models designed to detect crab pots from side-scan sonar imagery. If you want to use your own compatible `Roboflow` export instead, you can download a custom model with the included utility.
 
 1. Open the appropriate command prompt based on your installation above.
 2. Launch the Roboflow model download utility:
