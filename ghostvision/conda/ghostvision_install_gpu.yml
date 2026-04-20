@@ -30,5 +30,6 @@ dependencies:
       - transformers
       - inference-gpu==0.63.5
       - supervision
-      - opencv-python==4.10.0.84
+      - opencv-python
       - rsa
+      - freesimplegui
