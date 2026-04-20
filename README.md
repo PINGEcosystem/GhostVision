@@ -17,10 +17,9 @@ Near-real time detection of derelict (ghost) crab pots with side-scan sonar.
 
 ## 📜 Published Documentation
 ### 📄 Journal Article
-*In Preparation*
+Bodine, C.S.; Baxevani, K.; Abbasi, N.;Wierzbicki, J.; Christoph, O.; Hughes, C.; Bagoren, O.; Hines, O.; Greco, J.; Trembanis, A. GhostVision: Democratizing Derelict Gear Detection using Low-Cost Sonar and Artificial Intelligence. (In Review). Submitted to Journal of Marine Science and Engineering.
 
 ### 🤖 Models
-*In Preparation*
 - GV-RF-DETR [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-rf-detr)
 - GV-YOLO12 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-yolo12)
 - GV-YOLO26 [![Model on HF](https://huggingface.co/datasets/huggingface/badges/resolve/main/model-on-hf-md.svg)](https://huggingface.co/PINGEcosystem/gv-yolo26)
