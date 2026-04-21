@@ -22,12 +22,116 @@ from glob import glob
 # tilePath = os.path.abspath(tilePath)
 # sys.path.insert(0, tilePath)    
 
-from pingdetect.detect_spatial import calcDetectLoc, summarizeDetect, calcWpt, calcDetectIdx
+from pingdetect.detect_spatial import calcDetectLoc, calcWpt, calcDetectIdx, assign_quality_tier
 from pingtile.sonogramMovWin import doSonogramMovWin
 
 # Set GHOSTVISION utils dir
 USER_DIR = os.path.expanduser('~')
 GV_UTILS_DIR = os.path.join(USER_DIR, '.ghostvision')
+
+
+def _is_sidescan_detection_beam(beam_name: str) -> bool:
+    beam_name = str(beam_name)
+    return beam_name.startswith('ss_port') or beam_name.startswith('ss_star')
+
+
+def _resolve_smth_trk_file(son):
+    smth_trk_file = getattr(son, 'smthTrkFile', None)
+    if smth_trk_file and os.path.exists(smth_trk_file):
+        return smth_trk_file
+
+    fallback = os.path.join(son.projDir, 'meta', 'Trackline_Smth_{}.csv'.format(son.beamName))
+    if os.path.exists(fallback):
+        son.smthTrkFile = fallback
+        return fallback
+
+    raise AttributeError(
+        "'crabObj' object has no attribute 'smthTrkFile'. "
+        'Expected rectification setup to generate {}'.format(os.path.basename(fallback))
+    )
+
+
+def summarize_detect_alpha(df: pd.DataFrame, alpha: float = 0.45) -> pd.DataFrame:
+    alpha = float(np.clip(alpha, 0.0, 1.0))
+    summarized = []
+
+    for tracker_id, group in df.groupby('tracker_id'):
+        sum_dict = {}
+        sum_dict['projName'] = group['projName'].iloc[0]
+        sum_dict['tracker_id'] = tracker_id
+        sum_dict['class_id'] = group['class_id'].mode().iloc[0]
+        sum_dict['class_name'] = group['data'].mode().iloc[0]
+        sum_dict['pred_cnt'] = len(group)
+        sum_dict['conf_avg'] = group['confidence'].mean()
+        sum_dict['conf_min'] = group['confidence'].min()
+        sum_dict['conf_max'] = group['confidence'].max()
+        sum_dict['conf_std'] = group['confidence'].std()
+        sum_dict['record_num'] = group['record_num'].median()
+        sum_dict['mid_x'] = int(group['mid_x'].mean())
+        sum_dict['mid_y'] = int(group['mid_y'].mean())
+
+        weights = group['confidence'].fillna(0).to_numpy()
+        weight_sum = weights.sum()
+        if weight_sum > 0:
+            sum_dict['target_lat'] = np.around((group['target_lat'].to_numpy() * weights).sum() / weight_sum, 8)
+            sum_dict['target_lon'] = np.around((group['target_lon'].to_numpy() * weights).sum() / weight_sum, 8)
+        else:
+            sum_dict['target_lat'] = np.around(group['target_lat'].mean(), 8)
+            sum_dict['target_lon'] = np.around(group['target_lon'].mean(), 8)
+
+        sum_dict['target_slantrange'] = np.around(group['target_slantrange'].mean(), 3)
+        sum_dict['target_range'] = np.around(group['target_range'].mean(), 3)
+        sum_dict['dep_m'] = np.around(group['dep_m'].mean(), 3)
+        sum_dict['mid_x_std'] = group['mid_x'].std()
+        sum_dict['mid_y_std'] = group['mid_y'].std()
+        summarized.append(sum_dict)
+
+    finalDF = pd.DataFrame(summarized)
+    if finalDF.empty:
+        return finalDF
+
+    conf_score = finalDF['conf_avg'].fillna(0).clip(0, 1)
+    pred_cnt_max = finalDF['pred_cnt'].max() if len(finalDF) > 0 else 1
+    pred_cnt_max = max(pred_cnt_max, 1)
+    persistence_score = (finalDF['pred_cnt'] / pred_cnt_max).clip(0, 1)
+
+    conf_std_max = finalDF['conf_std'].quantile(0.9) if len(finalDF) > 0 else 0.3
+    conf_std_max = max(conf_std_max, 0.01)
+    stability_score = (1 - (finalDF['conf_std'].fillna(0) / conf_std_max)).clip(0, 1)
+
+    spatial_var = np.sqrt(finalDF['mid_x_std']**2 + finalDF['mid_y_std']**2).fillna(0)
+    spatial_var_max = spatial_var.quantile(0.9) if len(finalDF) > 0 else 10
+    spatial_var_max = max(spatial_var_max, 1)
+    spatial_score = (1 - (spatial_var / spatial_var_max)).clip(0, 1)
+
+    primary_score = alpha * conf_score + (1 - alpha) * persistence_score
+
+    finalDF['alpha'] = alpha
+    finalDF['confidence_score'] = conf_score.round(3)
+    finalDF['persistence_score'] = persistence_score.round(3)
+    finalDF['combined_score'] = primary_score.round(3)
+    finalDF['quality_score'] = (
+        0.7 * primary_score +
+        0.2 * stability_score +
+        0.1 * spatial_score
+    ).mul(100).round(1)
+    finalDF['quality_tier'] = finalDF['quality_score'].apply(assign_quality_tier)
+
+    return finalDF
+
+
+def filter_detects_for_export(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    if 'combined_score' in df.columns:
+        score_col = 'combined_score'
+    elif 'conf_avg' in df.columns:
+        score_col = 'conf_avg'
+    else:
+        score_col = 'confidence'
+
+    return df.loc[df[score_col] >= threshold].copy()
 
 #===========================================
 def crabpots_master_func(logfilename = '',
@@ -94,6 +198,7 @@ def crabpots_master_func(logfilename = '',
                         gpxToHum = True,
                         sdDir = '',
                         confidence = 0.5,
+                        alpha = 0.45,
                         iou_threshold = 0.5,
                         wptPrefix = '',
                         stride = 0,
@@ -101,7 +206,8 @@ def crabpots_master_func(logfilename = '',
                         delete_image = False,
                         export_vid = False,
                         inference_track=False,
-                        tracker_cnt = 1):
+                        tracker_cnt = 1,
+                        **kwargs):
     
 
     ###############################################
@@ -139,7 +245,7 @@ def crabpots_master_func(logfilename = '',
     crabObjs = []
     for meta in metaFiles:
         son = crabObj(meta) # Initialize mapObj()
-        if son.beamName == 'ss_port' or son.beamName == 'ss_star':
+        if _is_sidescan_detection_beam(son.beamName):
             crabObjs.append(son) # Store mapObj() in mapObjs[]
     del meta, metaFiles
 
@@ -264,7 +370,7 @@ def crabpots_master_func(logfilename = '',
             #     print(f"[DEBUG] Transect value counts:\n{detectDF['transect'].value_counts().sort_index()}")
 
             # Calculate ping index to get smoothed trackline data
-            smthTrkFile = son.smthTrkFile
+            smthTrkFile = _resolve_smth_trk_file(son)
             
             # Spatial indexing using stride-only mapping
             # Iterate over each transect
@@ -297,20 +403,20 @@ def crabpots_master_func(logfilename = '',
             if inference_track:
                 # Summarize by target_id
                 detectDF_before_summary = detectDF.copy()
-                detectDF = summarizeDetect(detectDF)
+                detectDF = summarize_detect_alpha(detectDF, alpha=alpha)
                 # print(f"[DEBUG] After summarizeDetect: {len(detectDF)} detections (was {len(detectDF_before_summary)})")
 
                 detectDF_before_threshold = detectDF.copy()
                 detectDF = detectDF.loc[detectDF['pred_cnt'] >= tracker_cnt]
                 # print(f"[DEBUG] After pred_cnt threshold (>= {tracker_cnt}): {len(detectDF)} detections (was {len(detectDF_before_threshold)})")
             # Create wpt shapefile and GPX
-            if len(detectDF)>0:
+            exportDF = filter_detects_for_export(detectDF, confidence)
+            if len(exportDF)>0:
                 projDir = son.projDir
                 # print(f"\n[DEBUG] Creating shapefile/GPX with {len(detectDF)} detections")
                 # print(f"[DEBUG] Output directory: {outDir}")
                 # print(f"[DEBUG] Project directory: {projDir}")
-                # Use the same confidence threshold for waypoint export to keep behavior consistent
-                calcWpt(detectDF, outDir, projDir, threshold=confidence)
+                calcWpt(exportDF, outDir, projDir, threshold=0.0)
             else:
                 # print(f"\n[DEBUG] No detections to export after filtering (DataFrame is empty)")
                 pass
