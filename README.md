@@ -36,27 +36,31 @@ Bodine, C.S.; Baxevani, K.; Abbasi, N.;Wierzbicki, J.; Christoph, O.; Hughes, C.
 #### Windows Only
 Windows does not natively support inference on the GPU. A utility called [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Windows Subsystem for Linux) needs to be installed in order to run inference on the GPU.
 
-1. Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Windows Subsystem for Linux) & 
-2. Open the command prompt by launching `Ubuntu` from the Windows Start menu.
+1. Install the [latest NVIDIA driver](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#getting-started-with-cuda-on-wsl-2) for your system.
+2. Add [CUDA Support for WSL 2](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2).
+    - *Assumes your computer has an NVIDIA GPU.*
+3. Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Windows Subsystem for Linux) & 
+4. Open the command prompt by launching `Ubuntu` from the Windows Start menu.
+5. You may need to install the NVIDIA Cuda Toolkit with `sudo apt install nvidia-cuda-toolkit`.
 
 #### Install `Miniforge`
 
-3. In a command prompt, download [`Miniforge`](https://conda-forge.org/download/) with:
+4. In a command prompt, download [`Miniforge`](https://conda-forge.org/download/) with:
     ```
     wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
     ```
-4. Install [`Miniforge`](https://conda-forge.org/download/) with:
+5. Install [`Miniforge`](https://conda-forge.org/download/) with:
     ```
     bash Miniforge3-$(uname)-$(uname -m).sh
     ```
 
 #### Install `GhostVision`
 
-5. Install `PINGInstaller`:
+6. Install `PINGInstaller`:
     ```
     pip install pinginstaller
     ```
-6. Install `GhostVision`:
+7. Install `GhostVision`:
     ```
     python -m pinginstaller ghostvision-gpu
     ```
@@ -86,6 +90,38 @@ An experimental version of `GhostVision` is available to test inference speeds o
 3. Select your desired model and processing parameters, then click `Submit`.
 
 Bundled release models are downloaded automatically into the local `~/.ghostvision/models` cache the first time they are needed. The current packaged aliases exposed by the app include `rf-detr_v1`, `yolo26_v1`, and `yolo12_v1`.
+
+## Recommended Settings
+
+The most useful model-specific operating points currently come from the full GhostVision accuracy assessment workflow used for the companion manuscript. In that analysis, detections were evaluated against manual annotations at a `3 m` match radius. When object tracking is enabled, GhostVision combines confidence and temporal persistence using:
+
+`S = alpha * conf_avg + (1 - alpha) * pred_cnt / max(pred_cnt)`
+
+The combined-score analysis reports the following best-performing `alpha` values:
+
+- `YOLOv12`: `alpha = 0.90`
+- `YOLOv26`: `alpha = 0.95`
+- `RF-DETR`: `alpha = 0.85`
+
+The same workflow reports these best thresholds:
+
+- `YOLOv12`: `confidence = 0.148`, `pred_cnt = 17`, `combined score = 0.221`
+- `YOLOv26`: `confidence = 0.101`, `pred_cnt = 15`, `combined score = 0.136`
+- `RF-DETR`: `confidence = 0.386`, `pred_cnt = 18`, `combined score = 0.345`
+
+Peak F1 values from that workflow were:
+
+- `YOLOv12`: `F1 = 0.739` from confidence alone, `0.574` from persistence alone, `0.716` from the combined score
+- `YOLOv26`: `F1 = 0.737` from confidence alone, `0.596` from persistence alone, `0.707` from the combined score
+- `RF-DETR`: `F1 = 0.721` from confidence alone, `0.667` from persistence alone, `0.727` from the combined score
+
+For practical use, this suggests:
+
+- Prefer `YOLOv12` as the default packaged model for the best overall operational balance.
+- Start `YOLOv12` near `score threshold = 0.15`, `pred_cnt = 17`, and `alpha = 0.90` when you want settings that reproduce the evaluation workflow.
+- Use `RF-DETR` only when very high recall is more important than false-positive burden.
+
+GhostVision now uses the same `pred_cnt / max(pred_cnt)` normalization as the evaluation workflow when computing the tracked combined score. These values should be treated as model-specific reference points, not universal defaults. GhostVision's packaged defaults remain general-purpose starting values for field use, while the values above are the best choices when you want to reproduce the evaluation workflow as closely as possible.
 
 ## 📦 Download Custom `Roboflow` Object Detection Model
 

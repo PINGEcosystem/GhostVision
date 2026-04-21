@@ -28,7 +28,7 @@ dependencies:
       - tensorflow
       - tf-keras
       - transformers
-      - inference-gpu==0.63.5
+      - inference-gpu<1.0
       - supervision
       - opencv-python
       - rsa
