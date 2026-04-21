@@ -2,9 +2,10 @@ from setuptools import setup, find_packages
 from pathlib import Path
 
 DESCRIPTION = 'Near-real time detection of derelict (ghost) crab pots with side-scan sonar.'
-LONG_DESCRIPTION = Path('README.md').read_text()
+ROOT = Path(__file__).parent
+LONG_DESCRIPTION = (ROOT / 'README.md').read_text(encoding='utf-8')
 
-exec(open('ghostvision/version.py').read())
+exec((ROOT / 'ghostvision' / 'version.py').read_text(encoding='utf-8'))
 
 setup(
     name="ghostvision",
