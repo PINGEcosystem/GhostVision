@@ -31,7 +31,7 @@
     "alpha": 0.45,
     "iou_threshold": 0.1,
     "inference_track": true,
-    "track_cnt_thresh": 0.25,
+    "track_cnt_thresh": 17,
     "export_image": false,
     "export_vid": true
 }

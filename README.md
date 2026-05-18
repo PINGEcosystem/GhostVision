@@ -1,7 +1,5 @@
 # GhostVision
 
-# 🚧**UNDER CONSTRUCTION**🚧
-
 [![PyPI - Version](https://img.shields.io/pypi/v/ghostvision?style=flat-square&label=Latest%20Version%20(PyPi))](https://pypi.org/project/ghostvision/)
 [![GitHub last commit](https://img.shields.io/github/last-commit/PINGEcosystem/GhostVision)](https://github.com/PINGEcosystem/GhostVision/commits)
 [![GitHub commit activity](https://img.shields.io/github/commit-activity/m/PINGEcosystem/GhostVision)](https://github.com/PINGEcosystem/GhostVision/commits)
@@ -37,8 +35,8 @@ Bodine, C.S.; Baxevani, K.; Abbasi, N.;Wierzbicki, J.; Christoph, O.; Hughes, C.
 Windows does not natively support inference on the GPU. A utility called [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Windows Subsystem for Linux) needs to be installed in order to run inference on the GPU.
 
 1. Install the [latest NVIDIA driver](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#getting-started-with-cuda-on-wsl-2) for your system.
-2. Add [CUDA Support for WSL 2](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2).
     - *Assumes your computer has an NVIDIA GPU.*
+2. Add [CUDA Support for WSL 2](https://docs.nvidia.com/cuda/wsl-user-guide/index.html#cuda-support-for-wsl-2).
 3. Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Windows Subsystem for Linux) & 
 4. Open the command prompt by launching `Ubuntu` from the Windows Start menu.
 5. You may need to install the NVIDIA Cuda Toolkit with `sudo apt install nvidia-cuda-toolkit`.
@@ -89,6 +87,13 @@ An experimental version of `GhostVision` is available to test inference speeds o
     ```
 3. Select your desired model and processing parameters, then click `Submit`.
 
+The main user-facing detection controls are organized into these GUI sections:
+
+- `Detection Setup`: choose the packaged model.
+- `Detection Filtering & Tracking`: set `Score Threshold`, optionally enable `Track Objects`, then adjust `Min Consecutive Detections (pred_cnt)` and `Alpha Weight` for tracked filtering.
+- `Active filter`: a live summary directly below the filtering section that shows the exact logic GhostVision will apply to keep detections.
+- `Show Expert Settings`: reveals less commonly adjusted controls such as `IoU Threshold`, `Moving Window`, and `Window Stride`.
+
 Bundled release models are downloaded automatically into the local `~/.ghostvision/models` cache the first time they are needed. The current packaged aliases exposed by the app include `rf-detr_v1`, `yolo26_v1`, and `yolo12_v1`.
 
 ## Recommended Settings
@@ -108,6 +113,15 @@ The same workflow reports these best thresholds:
 - `YOLOv12`: `confidence = 0.148`, `pred_cnt = 17`, `combined score = 0.221`
 - `YOLOv26`: `confidence = 0.101`, `pred_cnt = 15`, `combined score = 0.136`
 - `RF-DETR`: `confidence = 0.386`, `pred_cnt = 18`, `combined score = 0.345`
+
+GUI parameter mapping is now aligned to those manuscript terms:
+
+- `Score Threshold`: float slider in `[0.00, 1.00]` with `0.01` step. This is the main filtering threshold shown in the live `Active filter` box.
+- `Track Objects`: enables tracked filtering. When this is off, GhostVision filters detections by confidence alone.
+- `Min Consecutive Detections (pred_cnt)`: integer slider in `[1, 60]` with step `1`. This is intentionally an integer because it represents a count of consecutive detections, matching the manuscript persistence-threshold definition.
+- `Alpha Weight`: float slider in `[0.00, 1.00]` with `0.05` step. This is only used when `Track Objects` is enabled because it controls the combined score:
+  `S = alpha * conf_avg + (1 - alpha) * pred_cnt / max(pred_cnt)`
+- `Show Expert Settings`: reveals `IoU Threshold`, `Moving Window`, and `Window Stride`. These are advanced inference controls and are normally left at their defaults.
 
 Peak F1 values from that workflow were:
 

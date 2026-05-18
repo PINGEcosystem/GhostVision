@@ -117,6 +117,44 @@ def _fit_window_to_screen(window, width_ratio=0.72, height_ratio=0.85):
     root.geometry(f'{target_width}x{target_height}+{offset_x}+{offset_y}')
 
 
+def _build_filter_summary(values: dict) -> str:
+    """Return the exact export filter expression that will be applied, given current GUI values."""
+    tracking = bool(values.get('inference_track', False))
+    conf     = float(values.get('confidence', 0.5))
+    alpha    = float(values.get('alpha', 0.45))
+    pred_cnt = max(1, int(np.rint(float(values.get('track_cnt_thresh', 17)))))
+    if tracking:
+        a = f'{alpha:.2f}'
+        b = f'{1 - alpha:.2f}'
+        return (
+            f'Active filter:  pred_cnt >= {pred_cnt}  AND  combined score (S) >= {conf:.2f}\n'
+            f'  Parameters:    alpha = {a},  pred_cnt = {pred_cnt},  score threshold = {conf:.2f}\n'
+            f'  Equation:      S = alpha * conf_avg + (1 - alpha) * pred_cnt / max(pred_cnt)\n'
+            f'  Evaluated:     S = {a} * conf_avg + {b} * pred_cnt / max(pred_cnt)'
+        )
+    else:
+        return f'Active filter:  confidence >= {conf:.2f}'
+
+
+def _normalize_track_count_value(raw_value, window_stride=0.05):
+    """Normalize legacy fractional tracking thresholds to integer pred_cnt values."""
+    try:
+        numeric = float(raw_value)
+    except (TypeError, ValueError):
+        return 17
+
+    if numeric <= 0:
+        return 1
+
+    # Backward compatibility: older configs stored a 0-1 fraction scaled by stride.
+    if 0 < numeric <= 1:
+        stride = max(float(window_stride), 1e-6)
+        legacy_pred_cnt = int(np.around((1.0 / stride) * numeric, decimals=0))
+        return max(legacy_pred_cnt, 1)
+
+    return max(int(np.rint(numeric)), 1)
+
+
 def _get_pingmapper_dowork():
     try:
         return importlib.import_module('pingmapper.doWork').doWork
@@ -197,6 +235,11 @@ def detect_main(batch: bool=True):
     for k, v in primary_defaults.items():
         if k not in default_params:
             default_params[k] = v
+
+    default_params['track_cnt_thresh'] = _normalize_track_count_value(
+        default_params.get('track_cnt_thresh', 17),
+        window_stride=default_params.get('window_stride', 0.05),
+    )
     
 
     ############
@@ -245,7 +288,7 @@ def detect_main(batch: bool=True):
     tip_moving_window = ml_tip('Run inference with overlapping windows instead of single-pass tiles. This can improve detections near tile edges.')
     tip_window_stride = ml_tip('Stride fraction for the moving window. Smaller values increase overlap and runtime; larger values reduce overlap.')
     tip_track = ml_tip('Track detections across adjacent frames/tiles to merge repeated observations of the same object.')
-    tip_track_threshold = ml_tip('Minimum tracking consistency threshold used to keep tracked objects in the final results.')
+    tip_track_threshold = ml_tip('Minimum number of consecutive detections (pred_cnt) required to keep a tracked object. Manuscript operating points were around pred_cnt = 15 to 18 depending on model.')
     tip_export_image = ml_tip('Export still images showing detections and annotations.')
     tip_export_video = ml_tip('Export videos showing detections and annotations across the processed sonar imagery.')
 
@@ -399,9 +442,9 @@ def detect_main(batch: bool=True):
 
 
     ##################
-    # Detection Params
+    # Detection Setup
 
-    text_detect = sg.Text('Detection Parameters\n', font=("Helvetica", 14, "underline"))
+    text_detect = sg.Text('Detection Setup\n', font=("Helvetica", 14, "underline"))
 
 
     # Model Selection #
@@ -410,12 +453,78 @@ def detect_main(batch: bool=True):
     model_label = sg.Text("Model Selection:", size=(20, 1), font=("Helvetica", 12), justification="left")
     model_list = sg.Combo(avail_models_aliases, key='rf_model', default_value=default_params['rf_model'], tooltip=tip_model)
 
-    
-    # Confidence & IoU #
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_detect])
+    layout.append([model_label, model_list])
+
+
+    ################################
+    # Detection Filtering & Tracking
+
+    text_track = sg.Text('Detection Filtering & Tracking\n', font=("Helvetica", 14, "underline"))
+
+    # Inference Tracking #
+    check_track = sg.Checkbox('Track Objects', key='inference_track', default=default_params['inference_track'], enable_events=True, tooltip=tip_track)
+    if default_params['inference_track'] == True:
+        track_status = False
+    else:
+        track_status = True
+
     conf_label = sg.Text('Score Threshold', size=(20,1))
-    conf_slider = sg.Slider((0,1), key='confidence', default_value=default_params['confidence'], resolution=0.05, tick_interval=0.25, orientation='horizontal', tooltip=tip_confidence)
+    conf_slider = sg.Slider((0,1), key='confidence', default_value=default_params['confidence'], resolution=0.01, tick_interval=0.25, orientation='horizontal', enable_events=True, tooltip=tip_confidence)
     alpha_label = sg.Text('Alpha Weight', size=(20,1))
-    alpha_slider = sg.Slider((0,1), key='alpha', default_value=default_params['alpha'], resolution=0.05, tick_interval=0.25, orientation='horizontal', tooltip=tip_alpha)
+    alpha_slider = sg.Slider((0,1), key='alpha', default_value=default_params['alpha'], resolution=0.05, tick_interval=0.25, orientation='horizontal', disabled=track_status, enable_events=True, tooltip=tip_alpha)
+    text_track_thresh = sg.Text('Min Consecutive Detections (pred_cnt)', size=(32,1))
+    slide_track = sg.Slider((1,60), key='track_cnt_thresh', default_value=default_params['track_cnt_thresh'], resolution=1, tick_interval=10, orientation='horizontal', disabled=track_status, enable_events=True, tooltip=tip_track_threshold)
+    filter_left_heading = sg.Text('Thresholding', font=("Helvetica", 12, "bold"))
+    filter_right_heading = sg.Text('Tracking', font=("Helvetica", 12, "bold"))
+
+    filter_col_left = sg.Column(
+        [[filter_left_heading],
+         [conf_label, conf_slider],
+         [alpha_label, alpha_slider]],
+        vertical_alignment='top',
+    )
+    filter_col_right = sg.Column(
+        [[filter_right_heading],
+         [check_track],
+         [text_track_thresh, slide_track]],
+        vertical_alignment='top',
+    )
+
+    # Add to layout
+    layout.append([sg.HorizontalSeparator()])
+    layout.append([text_track])
+    layout.append([filter_col_left, sg.VerticalSeparator(), filter_col_right])
+
+    _initial_summary = _build_filter_summary(default_params)
+    filter_summary_text = sg.Text(
+        _initial_summary,
+        key='filter_summary',
+        font=("Courier", 10),
+        text_color='white',
+        background_color='#1a3a1a',
+        relief=sg.RELIEF_SUNKEN,
+        pad=((8, 8), (6, 6)),
+        size=(80, 5),
+        justification='left',
+    )
+    layout.append([filter_summary_text])
+
+
+    ##########################
+    # Expert Detection Settings
+
+    show_expert = sg.Checkbox(
+        'Show Expert Settings',
+        key='show_expert_settings',
+        default=bool(default_params.get('show_expert_settings', False)),
+        enable_events=True,
+    )
+    text_detect_expert = sg.Text('Expert Detection Settings\n', font=("Helvetica", 14, "underline"))
+
+    # IoU #
     iou_label = sg.Text('IoU Threshold', size=(20,1))
     iou_slider = sg.Slider((0,1), key='iou_threshold', default_value=default_params['iou_threshold'], resolution=0.05, tick_interval=0.25, orientation='horizontal', tooltip=tip_iou)
 
@@ -428,40 +537,24 @@ def detect_main(batch: bool=True):
     text_mov_win = sg.Text('Window Stride', size=(20,1))
     slide_mov_win = sg.Slider((0,1), key='window_stride', default_value=default_params['window_stride'], resolution=0.025, tick_interval=0.25, orientation='horizontal', disabled=mov_win_status, tooltip=tip_window_stride)
 
-    col_detect_1 = sg.Column([[model_label, model_list], 
-                              [check_mov_win],
-                              [text_mov_win, slide_mov_win]], 
-                              vertical_alignment='top')
-    
-    col_detect_2 = sg.Column([[conf_label, conf_slider],
-                              [alpha_label, alpha_slider],
-                              [iou_label, iou_slider]],
-                              vertical_alignment='top')
+    expert_settings_layout = [
+        [text_detect_expert],
+        [iou_label, iou_slider],
+        [check_mov_win],
+        [text_mov_win, slide_mov_win],
+    ]
 
-    # Add to layout
     layout.append([sg.HorizontalSeparator()])
-    layout.append([text_detect])
-    layout.append([col_detect_1, sg.VerticalSeparator(), col_detect_2])
-
-
-    ########################
-    # Object Tracking Params
-
-    text_track = sg.Text('Object Tracking Parameters\n', font=("Helvetica", 14, "underline"))
-
-    # Inference Tracking #
-    check_track = sg.Checkbox('Track Objects', key='inference_track', default=default_params['inference_track'], enable_events=True, tooltip=tip_track)
-    if default_params['inference_track'] == True:
-        track_status = False
-    else:
-        track_status = True
-    text_track_thresh = sg.Text('Tracking Threshold', size=(20,1))
-    slide_track = sg.Slider((0,1), key='track_cnt_thresh', default_value=default_params['track_cnt_thresh'], resolution=0.05, tick_interval=0.25, orientation='horizontal', disabled=track_status, tooltip=tip_track_threshold)
-
-    # Add to layout
-    layout.append([sg.HorizontalSeparator()])
-    layout.append([text_track])
-    layout.append([check_track, sg.VerticalSeparator(), text_track_thresh, slide_track])
+    layout.append([show_expert])
+    layout.append([
+        sg.pin(
+            sg.Column(
+                expert_settings_layout,
+                key='expert_settings_panel',
+                visible=bool(default_params.get('show_expert_settings', False)),
+            )
+        )
+    ])
 
     #########
     # Exports
@@ -483,9 +576,10 @@ def detect_main(batch: bool=True):
     layout.append([sg.HorizontalSeparator()])
     layout.append([sg.Push(), sg.Submit(), sg.Quit(), sg.Button('Save Defaults'), sg.Push()])
 
-    layout2 =[[sg.Column(layout, scrollable=True,  vertical_scroll_only=True, size_subsample_height=4)]]
+    layout2 =[[sg.Column(layout, key='main_scroll_col', scrollable=True,  vertical_scroll_only=True, size_subsample_height=4)]]
     window = sg.Window('GhostVision', layout2, resizable=True, finalize=True)
     _fit_window_to_screen(window)
+    window['filter_summary'].update(_build_filter_summary(default_params))
 
     while True:
         event, values = window.read()
@@ -510,8 +604,21 @@ def detect_main(batch: bool=True):
         if event == 'inference_track':
             if values['inference_track'] == True:
                 window['track_cnt_thresh'].update(disabled=False)
+                window['alpha'].update(disabled=False)
             else:
                 window['track_cnt_thresh'].update(disabled=True)
+                window['alpha'].update(disabled=True)
+
+        if event == 'show_expert_settings':
+            window['expert_settings_panel'].update(visible=bool(values['show_expert_settings']))
+            window.refresh()
+            if getattr(window, 'TKroot', None) is not None:
+                window.TKroot.update_idletasks()
+            window['main_scroll_col'].contents_changed()
+            window.refresh()
+
+        # Always refresh the live filter summary after any event
+        window['filter_summary'].update(_build_filter_summary(values))
 
     window.close()
     #########
@@ -666,10 +773,8 @@ def detect_main(batch: bool=True):
         params['export_image'] = values['export_image']
         params['inference_track'] = values['inference_track']
 
-        tracker_cnt = np.around((nchunk / (window_stride*nchunk)) * values['track_cnt_thresh'], decimals=0)
-        if tracker_cnt < 1:
-            tracker_cnt = 1
-        params['tracker_cnt'] = ((nchunk / (window_stride*nchunk)) * values['track_cnt_thresh'])
+        tracker_cnt = max(1, int(np.rint(float(values['track_cnt_thresh']))))
+        params['tracker_cnt'] = tracker_cnt
 
         if params['export_vid'] and not params['export_image']:
             params['export_image'] = True
